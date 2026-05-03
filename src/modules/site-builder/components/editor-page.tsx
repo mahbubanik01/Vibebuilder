@@ -213,11 +213,16 @@ const handleManualSave = async () => {
       return;
     }
     
-    try {
-      const filter = JSON.stringify({ slug: activePage.slug, siteId: siteId });
-      console.log('[SAVE] Calling API with filter:', filter);
-      console.log('[SAVE] Sections:', activePage.sections?.length, 'sections');
-      
+try {
+      // Use ItemId in filter - more precise
+      const pageItemId = activePage?.ItemId || activePage?.itemId;
+      const filter = pageItemId 
+        ? JSON.stringify({ ItemId: pageItemId })
+        : JSON.stringify({ slug: activePage.slug, siteId: siteId });
+      console.log('[SAVE] Using filter:', filter);
+      console.log('[SAVE] Sections data:', activePage.sections);
+      console.log('[SAVE] Sections JSON:', JSON.stringify(activePage.sections).substring(0,100));
+       
       const res: any = await updatePage({
         filter: filter,
         input: {
