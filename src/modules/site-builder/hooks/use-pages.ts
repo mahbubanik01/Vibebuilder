@@ -65,7 +65,12 @@ export const useUpdatePage = () => {
   return useGlobalMutation({
     mutationFn: (params: { filter: string; input: any }) => updatePage(params),
     onSuccess: (data: any) => {
+      // Aggressively invalidate and refetch
       queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'vibe-pages',
+      });
+      // Force refetch
+      queryClient.refetchQueries({
         predicate: (query) => query.queryKey[0] === 'vibe-pages',
       });
 
