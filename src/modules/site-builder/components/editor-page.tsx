@@ -87,7 +87,7 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
                    (pagesDataRes as any)?.data?.getVibePages?.items ||
                    [];
                     
-  console.log('[Editor] FULL API response:', JSON.stringify(pagesDataRes).substring(0, 1000));
+  console.log('[Editor] FULL API response:', pagesDataRes ? JSON.stringify(pagesDataRes).substring(0, 1000) : 'undefined');
   console.log('[Editor] Data keys:', Object.keys(pagesDataRes || {}));
   console.log('[Editor] getVibePages:', (pagesDataRes as any)?.getVibePages);
                     
