@@ -56,7 +56,7 @@ export function EditorPage() {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // Fetch Site Data - siteId is stored as array in DB
-  const { data: siteDataRes, isLoading: isSiteLoading } = useGetSites({
+  const { data: siteDataRes, isLoading: isSiteLoading, refetch: refetchSite } = useGetSites({
     pageNo: 1,
     pageSize: 1,
     filter: siteId ? JSON.stringify({ ItemId: [siteId] }) : undefined,
