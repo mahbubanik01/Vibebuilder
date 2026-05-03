@@ -187,9 +187,12 @@ export function EditorPage() {
   }, [debouncedEditorPage, activePage, isLocalSite, siteId]);
 
 const handleManualSave = async () => {
-    if (!activePage) return;
+    if (!activePage) {
+      console.log('[SAVE] No activePage, returning');
+      return;
+    }
     
-    console.log('[SAVE] Manual save for:', activePage.slug);
+    console.log('[SAVE] Manual save for:', activePage.slug, 'siteId:', siteId, 'isLocalSite:', isLocalSite);
     setIsAutoSaving(true);
 
     if (isLocalSite) {
@@ -205,12 +208,18 @@ const handleManualSave = async () => {
     }
     
     try {
-      await updatePage({
-        filter: JSON.stringify({ slug: activePage.slug, siteId: siteId }),
+      const filter = JSON.stringify({ slug: activePage.slug, siteId: siteId });
+      console.log('[SAVE] Calling API with filter:', filter);
+      console.log('[SAVE] Sections:', activePage.sections?.length, 'sections');
+      
+      const res: any = await updatePage({
+        filter: filter,
         input: {
           sections: JSON.stringify(activePage.sections),
         }
       });
+      
+      console.log('[SAVE] API response:', res);
       toast({ title: 'Saved Successfully' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Save Failed' });
