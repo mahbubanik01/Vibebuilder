@@ -43,6 +43,8 @@ export function EditorPage() {
   const { toast } = useToast();
   const { user } = useAuthStore();
   const ownerId = (user as any)?.id || 'anonymous';
+  
+  const isLocalSite = siteId?.startsWith('local-');
 
   // State
   const [activePage, setActivePage] = useState<Page | null>(null);
@@ -72,8 +74,6 @@ export function EditorPage() {
   const { mutateAsync: updatePage } = useUpdatePage();
   const { mutateAsync: updateSite, isPending: isPublishing } = useUpdateSite();
   const { mutateAsync: createSite } = useCreateSite();
-
-  const isLocalSite = siteId?.startsWith('local-');
 
   // Robustly extract site and pages
   const site = (siteDataRes as any)?.getVibeSites?.items?.[0] || 
