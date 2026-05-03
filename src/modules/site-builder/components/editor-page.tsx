@@ -93,6 +93,12 @@ export function EditorPage() {
     sections: safeJsonParse(p.sections, [])
   })) : [];
 
+  // Debug: Show first page's sections count
+  if (pages.length > 0) {
+    console.log('[Editor] First page sections:', pages[0].sections?.length);
+    console.log('[Editor] First page sections content:', JSON.stringify(pages[0].sections).substring(0, 200));
+  }
+  
   const {
     page: editorPage,
     addSection,
