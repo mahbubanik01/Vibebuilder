@@ -55,11 +55,11 @@ export function EditorPage() {
   const [viewport, setViewport] = useState<ViewportMode>('desktop');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  // Fetch Site Data
+  // Fetch Site Data - siteId is stored as array in DB
   const { data: siteDataRes, isLoading: isSiteLoading } = useGetSites({
     pageNo: 1,
     pageSize: 1,
-    filter: siteId ? JSON.stringify({ ItemId: siteId }) : undefined,
+    filter: siteId ? JSON.stringify({ ItemId: [siteId] }) : undefined,
   });
 
   // Fetch Pages Data - siteId is stored as array in DB
@@ -277,7 +277,7 @@ try {
 
     try {
       const res: any = await updateSite({
-        filter: "{\"ItemId\":\"" + siteId + "\"}",
+        filter: JSON.stringify({ ItemId: [siteId] }),
         input: { isPublished: newStatus }
       });
       console.log('Publish result:', res);
