@@ -215,8 +215,6 @@ const handleManualSave = async () => {
       
       if (res?.updateVibePage?.acknowledged) {
         toast({ title: 'Saved', description: 'Changes saved successfully.' });
-        // Force refetch
-        window.location.reload();
       } else {
         console.log('[SAVE] API returned but not acknowledged:', res);
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to save: ' + JSON.stringify(res) });
