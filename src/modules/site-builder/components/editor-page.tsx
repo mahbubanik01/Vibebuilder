@@ -227,6 +227,8 @@ const handleManualSave = async () => {
       
       console.log('[SAVE] API response:', res);
       toast({ title: 'Saved Successfully' });
+      // Force reload to get fresh data
+      window.location.reload();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
