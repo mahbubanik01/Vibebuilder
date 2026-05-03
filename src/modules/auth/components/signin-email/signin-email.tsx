@@ -107,55 +107,69 @@ export const SigninEmail = () => {
         message={t('EMAIL_PASSWORD_NOT_VALID')}
       />
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="username"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('EMAIL')}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t('ENTER_YOUR_EMAIL')} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('PASSWORD')}</FormLabel>
-                <FormControl>
-                  <PasswordInput placeholder={t('ENTER_YOUR_PASSWORD')} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex justify-end">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-primary hover:text-primary-600 hover:underline"
-            >
-              {t('FORGOT_PASSWORD')}
-            </Link>
+        <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-6">
+          <div className="space-y-5">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">{t('EMAIL')}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder={t('ENTER_YOUR_EMAIL')} 
+                      {...field} 
+                      className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px] font-medium" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex justify-between items-center">
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">{t('PASSWORD')}</FormLabel>
+                    <Link
+                      to="/forgot-password"
+                      className="text-[11px] font-bold text-primary/70 hover:text-primary transition-colors uppercase tracking-wider"
+                    >
+                      {t('FORGOT_PASSWORD')}
+                    </Link>
+                  </div>
+                  <FormControl>
+                    <PasswordInput 
+                      placeholder={t('ENTER_YOUR_PASSWORD')} 
+                      {...field} 
+                      className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[11px] font-medium" />
+                </FormItem>
+              )}
+            />
           </div>
 
           {isCaptchaRequired && (
-            <div className="my-4">
-              <Captcha {...captcha} theme="light" size="normal" />
+            <div className="my-6 p-4 rounded-xl bg-muted/20 border border-border/40">
+              <Captcha {...captcha} theme={theme === 'dark' ? 'dark' : 'light'} size="normal" />
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-12 text-[15px] font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-50"
             disabled={isPending || (isCaptchaRequired && !captchaCode)}
           >
-            {t('LOG_IN')}
+            {isPending ? (
+               <div className="flex items-center gap-2">
+                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span>{t('LOGGING_IN', 'Logging in...')}</span>
+               </div>
+            ) : t('LOG_IN')}
           </Button>
         </form>
       </Form>

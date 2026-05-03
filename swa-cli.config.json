@@ -1,7 +1,7 @@
 {
-  "": "https://aka.ms/azure/static-web-apps-cli/schema",
+  "$schema": "https://aka.ms/azure/static-web-apps-cli/schema",
   "configurations": {
-    "Lamit": {
+    "dbtkkv": {
       "appDir": "build",
       "outputLocation": "build"
     }

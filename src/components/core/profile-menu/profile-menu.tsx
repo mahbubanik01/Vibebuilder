@@ -45,21 +45,30 @@ export const ProfileMenu = () => {
   const imgRef = useRef<HTMLImageElement>(null);
   const { t } = useTranslation();
 
-  const { logout } = useAuthStore();
-  const { mutateAsync } = useSignoutMutation();
+  const { logout, reset } = useAuthStore();
+  const signoutMutation = useSignoutMutation();
   const navigate = useNavigate();
   const { data, isLoading } = useGetAccount();
 
-  const signoutHandler = async () => {
-    try {
-      const res = await mutateAsync();
-      if (res.isSuccess) {
+  const onSignoutHandler = () => {
+    signoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        // Clear all state
         logout();
+        reset();
+        localStorage.clear();
+        sessionStorage.clear();
         navigate('/login');
-      }
-    } catch (_error) {
-      /* empty */
-    }
+      },
+      onError: () => {
+        // Force logout even on error
+        logout();
+        reset();
+        localStorage.clear();
+        sessionStorage.clear();
+        navigate('/login');
+      },
+    });
   };
 
   const fullName = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim() ?? ' ';
@@ -119,7 +128,7 @@ export const ProfileMenu = () => {
         <DropdownMenuItem disabled>{t('ABOUT')}</DropdownMenuItem>
         <DropdownMenuItem disabled>{t('PRIVACY_POLICY')}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signoutHandler}>{t('LOG_OUT')}</DropdownMenuItem>
+        <DropdownMenuItem onClick={onSignoutHandler}>{t('LOG_OUT')}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

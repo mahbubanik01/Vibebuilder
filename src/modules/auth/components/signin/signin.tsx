@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { GRANT_TYPES } from '@/constant/auth';
-import { Divider } from '@/components/core';
 import { SsoSignin } from '../signin-sso';
 import { SigninEmail } from '../signin-email';
 import { useTheme } from '@/styles/theme/theme-provider';
@@ -33,31 +32,36 @@ export const Signin = () => {
     'dev-construct.seliseblocks.com',
   ].some((domain) => window.location.hostname === domain);
   return (
-    <div className="flex flex-col gap-6">
-      <div className="w-32 h-14 mb-2">
-        <img src={theme == 'dark' ? lightlogo : darklogo} className="w-full h-full" alt="logo" />
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-high-emphasis">{t('LOG_IN')}</div>
-        {(signupSettings?.isEmailPasswordSignUpEnabled || signupSettings?.isSSoSignUpEnabled) && (
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-sm font-normal text-medium-emphasis">
-              {t('DONT_HAVE_ACCOUNT')}
-            </span>
-            <Link
-              to={'/signup'}
-              className="text-sm font-bold text-primary hover:text-primary-600 hover:underline"
-            >
-              {t('SIGN_UP')}
-            </Link>
-          </div>
-        )}
+    <div className="flex flex-col gap-10 w-full max-w-[420px] animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
+      <div className="flex flex-col gap-8">
+        <div className="w-40 h-16 transition-transform hover:scale-105 duration-300">
+          <img src={theme === 'dark' ? lightlogo : darklogo} className="w-full h-full object-contain" alt="logo" />
+        </div>
+        <div className="space-y-3">
+          <h1 className="text-4xl font-extrabold text-high-emphasis tracking-tight">
+            {t('LOG_IN')}
+          </h1>
+          {(signupSettings?.isEmailPasswordSignUpEnabled || signupSettings?.isSSoSignUpEnabled) && (
+            <div className="flex items-center gap-2 text-[15px]">
+              <span className="font-medium text-medium-emphasis">
+                {t('DONT_HAVE_ACCOUNT')}
+              </span>
+              <Link
+                to={'/signup'}
+                className="font-bold text-primary hover:text-primary-600 transition-colors relative group"
+              >
+                {t('SIGN_UP')}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full"></span>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
       
       {ssoError && (
-        <div className="w-full">
-          <div className="rounded-lg bg-error-background border border-error p-4">
-            <p className="text-xs font-normal text-error-high-emphasis">
+        <div className="w-full animate-in zoom-in-95 duration-300">
+          <div className="rounded-xl bg-error/10 border border-error/20 p-5 backdrop-blur-sm">
+            <p className="text-[13px] font-medium text-error leading-relaxed">
               {ssoError}
             </p>
           </div>
@@ -65,18 +69,36 @@ export const Signin = () => {
       )}
 
       <div className={'w-full ' + (isBannerAllowedToVisible ? 'visible' : 'invisible h-0')}>
-        <div className="rounded-lg bg-success-background border border-success p-4">
-          <p className="text-xs font-normal text-success-high-emphasis">
-            Log in to explore the complete Demo and Documentation. Use the credentials:{' '}
-            <span className="font-semibold">demo.construct@seliseblocks.com</span> with password:{' '}
-            <span className="font-semibold">H%FE*FYi5oTQ!VyT6TkEy</span>
+        <div className="rounded-xl bg-success/10 border border-success/20 p-5 backdrop-blur-sm">
+          <p className="text-[13px] font-medium text-success leading-relaxed">
+            <span className="opacity-70">Log in to explore the complete Demo. Credentials:</span><br/>
+            <span className="font-bold select-all">demo.construct@seliseblocks.com</span><br/>
+            <span className="opacity-70">Password:</span> <span className="font-bold select-all">H%FE*FYi5oTQ!VyT6TkEy</span>
           </p>
         </div>
       </div>
-      <div className="w-full flex flex-col gap-6">
-        {passwordGrantAllowed && <SigninEmail />}
-        {isDivider && <Divider text={t('AUTH_OR')} />}
-        {socialGrantAllowed && loginOption && <SsoSignin loginOption={loginOption} />}
+
+      <div className="w-full flex flex-col gap-8">
+        {passwordGrantAllowed && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
+            <SigninEmail />
+          </div>
+        )}
+        {isDivider && (
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60"></span>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-[0.2em] font-bold">
+              <span className="bg-background px-4 text-muted-foreground/60">{t('AUTH_OR')}</span>
+            </div>
+          </div>
+        )}
+        {socialGrantAllowed && loginOption && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+            <SsoSignin loginOption={loginOption} />
+          </div>
+        )}
       </div>
     </div>
   );

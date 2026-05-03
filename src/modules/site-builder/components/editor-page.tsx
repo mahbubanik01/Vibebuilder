@@ -15,6 +15,7 @@ import { Button } from '@/components/ui-kit/button';
 import { Rocket, Globe, ExternalLink, RefreshCcw, Settings, X, Monitor, Tablet, Smartphone, ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/state/store/auth';
+import { normalizeScalar, safeJsonParse } from '@/lib/data-utils';
 import {
   Dialog,
   DialogContent,
@@ -28,23 +29,27 @@ import { Input } from '@/components/ui-kit/input';
 import { Textarea } from '@/components/ui-kit/textarea';
 import { SectionEditor } from './section-editor';
 
-type ViewportMode = 'desktop' | 'tablet' | 'mobile';
-
-const VIEWPORT_WIDTHS: Record<ViewportMode, string> = {
-  desktop: '100%',
-  tablet: '768px',
-  mobile: '375px',
-};
-
 export function EditorPage() {
   const { siteId, pageId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuthStore();
+  const ownerId = (user as any)?.id || 'anonymous';
+
+  // State
+  const [activePage, setActivePage] = useState<Page | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [isSiteSettingsOpen, setIsSiteSettingsOpen] = useState(false);
+  const [siteTitle, setSiteTitle] = useState('');
+  const [siteDescription, setSiteDescription] = useState('');
+  const [viewport, setViewport] = useState<ViewportMode>('desktop');
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // Fetch Site Data
   const { data: siteDataRes, isLoading: isSiteLoading } = useGetSites({
     pageNo: 1,
     pageSize: 1,
-    filter: siteId ? "{\"ItemId\":{\"$eq\":\"" + siteId + "\"}}" : undefined,
+    filter: siteId ? JSON.stringify({ ItemId: siteId }) : undefined,
   });
 
   // Fetch Pages Data
@@ -60,33 +65,25 @@ export function EditorPage() {
   const { mutateAsync: updateSite, isPending: isPublishing } = useUpdateSite();
   const { mutateAsync: createSite } = useCreateSite();
 
-  const { user } = useAuthStore();
-  const ownerId = (user as any)?.id || 'anonymous';
-
-  const site = (siteDataRes as any)?.getVibeSites?.items?.[0] || (siteDataRes as any)?.VibeSites?.items?.[0] || (siteId?.startsWith('local-') ? JSON.parse(localStorage.getItem('vibe-sites') || '[]').find((s: any) => s.ItemId === siteId) : null);
-  const pagesRaw = (pagesDataRes as any);
-  const rawItems = (pagesRaw?.getVibePages?.items || 
-                    pagesRaw?.VibePages?.items || 
-                    pagesRaw?.getVibePage?.items || 
-                    pagesRaw?.VibePage?.items || 
-                    pagesRaw?.items || 
-                    (siteId?.startsWith('local-') ? JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]') : [])) as any[];
-                    
-  const pages: Page[] = rawItems.map(p => ({
-    ...p,
-    name: Array.isArray(p.name) ? p.name[0] : p.name,
-    slug: Array.isArray(p.slug) ? p.slug[0] : p.slug,
-    sections: typeof p.sections === 'string' ? JSON.parse(p.sections || '[]') : (p.sections || [])
-  }));
-
-  const [activePage, setActivePage] = useState<Page | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [isSiteSettingsOpen, setIsSiteSettingsOpen] = useState(false);
-  const [siteTitle, setSiteTitle] = useState('');
-  const [siteDescription, setSiteDescription] = useState('');
-  const [viewport, setViewport] = useState<ViewportMode>('desktop');
-
   const isLocalSite = siteId?.startsWith('local-');
+
+  // Robustly extract site and pages
+  const site = (siteDataRes as any)?.getVibeSites?.items?.[0] || 
+               (siteDataRes as any)?.VibeSites?.items?.[0] || 
+               (isLocalSite ? JSON.parse(localStorage.getItem('vibe-sites') || '[]').find((s: any) => s.ItemId === siteId) : null);
+
+  const rawPages = (pagesDataRes as any)?.getVibePages?.items || 
+                    (pagesDataRes as any)?.VibePages?.items || 
+                    (pagesDataRes as any)?.items || 
+                    (isLocalSite ? JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]') : []);
+                    
+  const pages: Page[] = Array.isArray(rawPages) ? rawPages.map(p => ({
+    ...p,
+    ItemId: normalizeScalar(p.ItemId),
+    name: normalizeScalar(p.name),
+    slug: normalizeScalar(p.slug),
+    sections: safeJsonParse(p.sections, [])
+  })) : [];
 
   const {
     page: editorPage,
@@ -99,129 +96,118 @@ export function EditorPage() {
   } = useSiteEditor(activePage ?? (pages[0] || DEFAULT_SITE_DATA.pages[0]));
 
   // Debounce the editor state to auto-save
-  const [debouncedEditorPage] = useDebounce(editorPage, 1000);
-
-  const { toast } = useToast();
+  const [debouncedEditorPage] = useDebounce(editorPage, 1500);
 
   const isCreatingPage = useRef(false);
   const hasNavigated = useRef(false);
 
-  // Load the correct page into the editor
+  // 1. Initial Page Sync: Ensure URL pageId matches activePage
   useEffect(() => {
-    if (!isPagesLoading && pages.length > 0) {
-      let targetPage = pages.find((p) => p.slug === pageId);
+    if (isPagesLoading) return;
 
-      if (!targetPage) {
-        targetPage = pages[0];
-        console.log('[EditorPage] Target page not found for slug:', pageId, '. Falling back to:', targetPage?.slug);
-        if (!hasNavigated.current) {
-          hasNavigated.current = true;
-          navigate(`/site-builder/${siteId}/${targetPage.slug}`, { replace: true });
-        }
+    if (pages.length > 0) {
+      const targetPage = pages.find((p) => p.slug === pageId) || pages[0];
+
+      // If URL slug is missing or wrong, navigate to the correct one
+      if (pageId !== targetPage.slug && !hasNavigated.current) {
+        hasNavigated.current = true;
+        navigate(`/site-builder/${siteId}/${targetPage.slug}`, { replace: true });
         return;
       }
 
-      if (targetPage.slug !== activePage?.slug) {
+      // Sync editor with the target page if it changed
+      if (targetPage.slug !== activePage?.slug || targetPage.ItemId !== activePage?.ItemId) {
+        console.log('[EditorPage] Loading page:', targetPage.slug);
         setActivePage(targetPage);
         loadPage(targetPage);
       }
-    } else if (!isPagesLoading && pages.length === 0 && siteId && !isLocalSite && !isCreatingPage.current) {
-      console.log('[EditorPage] pages empty, creating default home page for siteId:', siteId);
+    } else if (siteId && !isLocalSite && !isCreatingPage.current) {
+      // Create home page if site exists but has no pages
+      console.log('[EditorPage] No pages found, creating home...');
       isCreatingPage.current = true;
-      const defaultPage = DEFAULT_SITE_DATA.pages[0];
+      const home = DEFAULT_SITE_DATA.pages[0];
       createPage({
         input: {
-          siteId,
-          name: defaultPage.name,
-          slug: defaultPage.slug,
-          sections: JSON.stringify(defaultPage.sections),
+          siteId: [siteId],
+          name: [home.name],
+          slug: [home.slug],
+          sections: JSON.stringify(home.sections),
+          sortOrder: 0
         }
-      }).finally(() => {
-        // We don't reset isCreatingPage to false because we want it to stay true 
-        // until the pages array actually populates and the first block takes over
       });
-    } else if (isLocalSite && pages.length === 0) {
-       // Create initial home page for local site if missing
-       const home = { name: 'Home', slug: 'home', sections: [] };
-       localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify([home]));
-       setActivePage(home);
-       loadPage(home);
     }
-  }, [pageId, pages, isPagesLoading, siteId, createPage, loadPage, activePage?.slug, isLocalSite]);
+  }, [pageId, pages, isPagesLoading, siteId, navigate, loadPage, activePage?.slug, activePage?.ItemId, isLocalSite, createPage]);
 
-  // Auto-save logic
+  // 2. Auto-save Logic
   useEffect(() => {
-    if (activePage && activePage.slug === debouncedEditorPage.slug) {
-      if (JSON.stringify(activePage.sections) !== JSON.stringify(debouncedEditorPage.sections)) {
-        
-        if (isLocalSite) {
-          const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
-          const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
-          if (idx !== -1) {
-            allPages[idx] = debouncedEditorPage;
-            localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
-          } else {
-            allPages.push(debouncedEditorPage);
-            localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
-          }
-          setActivePage(debouncedEditorPage);
-        } else {
-          updatePage({
-            filter: JSON.stringify({ ItemId: activePage.ItemId }),
-            input: {
-              sections: JSON.stringify(debouncedEditorPage.sections),
-            }
-          }).then(() => {
-            setActivePage(debouncedEditorPage);
-          }).catch((err) => {
-            console.error('Auto-save failed:', err);
-          });
+    if (!activePage || isLocalSite) return;
+
+    const hasChanges = JSON.stringify(activePage.sections) !== JSON.stringify(debouncedEditorPage.sections);
+    
+    if (hasChanges && debouncedEditorPage.slug === activePage.slug) {
+      console.log('[AUTO-SAVE] Saving changes for:', activePage.slug);
+      setIsAutoSaving(true);
+      
+      updatePage({
+        filter: JSON.stringify({ slug: activePage.slug, siteId: siteId }),
+        input: {
+          sections: JSON.stringify(debouncedEditorPage.sections),
         }
+      }).then(() => {
+        setActivePage(debouncedEditorPage);
+      }).catch(err => {
+        console.error('[AUTO-SAVE] Failed:', err);
+      }).finally(() => {
+        setIsAutoSaving(false);
+      });
+    }
+  }, [debouncedEditorPage, activePage, updatePage, isLocalSite]);
+
+  // 3. Local Site Auto-save
+  useEffect(() => {
+    if (!activePage || !isLocalSite) return;
+    
+    if (JSON.stringify(activePage.sections) !== JSON.stringify(debouncedEditorPage.sections)) {
+      const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
+      const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
+      if (idx !== -1) {
+        allPages[idx] = debouncedEditorPage;
+        localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
+        setActivePage(debouncedEditorPage);
       }
     }
-  }, [debouncedEditorPage, activePage, siteId, updatePage, isLocalSite]);
+  }, [debouncedEditorPage, activePage, isLocalSite, siteId]);
 
 const handleManualSave = async () => {
-    console.log('[SAVE] Starting save...', { activePage: !!activePage, isLocalSite, siteId });
-    if (!activePage) {
-      console.log('[SAVE] No activePage, returning');
-      return;
-    }
+    if (!activePage) return;
     
+    console.log('[SAVE] Manual save for:', activePage.slug);
+    setIsAutoSaving(true);
+
     if (isLocalSite) {
-      console.log('[SAVE] Local site, saving to localStorage');
       const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
       const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
       if (idx !== -1) {
         allPages[idx] = activePage;
         localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
       }
-      toast({ title: 'Saved', description: 'Changes saved locally.' });
+      toast({ title: 'Saved Locally' });
+      setIsAutoSaving(false);
       return;
     }
     
-    console.log('[SAVE] Cloud site, calling API with filter:', "{\"slug\":{\"$eq\":\"" + activePage.slug + "\"},\"siteId\":{\"$eq\":\"" + siteId + "\"}}");
-    console.log('[SAVE] Sections being saved:', activePage.sections.length, 'sections');
-    
     try {
-      const res: any = await updatePage({
-        filter: "{\"slug\":{\"$eq\":\"" + activePage.slug + "\"},\"siteId\":{\"$eq\":\"" + siteId + "\"}}",
+      await updatePage({
+        filter: JSON.stringify({ slug: activePage.slug, siteId: siteId }),
         input: {
           sections: JSON.stringify(activePage.sections),
         }
       });
-      
-      console.log('[SAVE] API response:', res);
-      
-      if (res?.updateVibePage?.acknowledged) {
-        toast({ title: 'Saved', description: 'Changes saved successfully.' });
-      } else {
-        console.log('[SAVE] API returned but not acknowledged:', res);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save: ' + JSON.stringify(res) });
-      }
+      toast({ title: 'Saved Successfully' });
     } catch (err) {
-      console.error('[SAVE] Error:', err);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save changes.' });
+      toast({ variant: 'destructive', title: 'Save Failed' });
+    } finally {
+      setIsAutoSaving(false);
     }
   };
 
@@ -454,7 +440,7 @@ toast({ title: 'Settings Saved' });
     );
   }
 
-  const selectedSection = editorPage.sections.find(s => s.id === selectedSectionId);
+  const selectedSection = (editorPage?.sections || []).find(s => s.id === selectedSectionId);
 
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-[#0D1117] selection:bg-[#2F81F7]/30">
@@ -482,11 +468,11 @@ toast({ title: 'Settings Saved' });
                     : 'bg-[#30363D]'
                 }`} />
                 <span className="text-[11px] text-[#9DA7B3] flex items-center gap-1.5">
-                  {(Array.isArray(site?.isPublished) ? site?.isPublished[0] : site?.isPublished) === true ? (
+                  {normalizeScalar(site?.isPublished) === true ? (
                     <>
                       Live • 
                       <a 
-                        href={`/live/${Array.isArray(site?.siteSlug) ? site?.siteSlug[0] : site?.siteSlug}/home`} 
+                        href={`/live/${normalizeScalar(site?.siteSlug)}/home`} 
                         target="_blank" 
                         rel="noreferrer"
                         className="text-[#2F81F7] hover:underline flex items-center gap-0.5"
@@ -501,8 +487,8 @@ toast({ title: 'Settings Saved' });
           </div>
         </div>
 
-        {/* Center: Improved Page Tabs */}
-        <div className="flex-1 flex justify-center max-w-[600px] mx-4">
+        {/* Center: Improved Page Tabs with Saving Indicator */}
+        <div className="flex-1 flex items-center justify-center max-w-[600px] mx-4 relative">
           <div className="bg-[#0D1117] p-1 rounded-lg border border-[#30363D]">
             <PageTabs
               pages={pages}
@@ -513,6 +499,13 @@ toast({ title: 'Settings Saved' });
               onPageUpdate={handlePageUpdate}
             />
           </div>
+          
+          {isAutoSaving && (
+            <div className="absolute -right-24 flex items-center gap-2 text-[10px] font-bold text-[#2F81F7] uppercase tracking-widest animate-pulse">
+              <RefreshCcw className="w-3 h-3 animate-spin" />
+              Saving...
+            </div>
+          )}
         </div>
 
         {/* Right: Actions */}
@@ -540,9 +533,10 @@ toast({ title: 'Settings Saved' });
           <Button
             size="sm"
             onClick={handleManualSave}
+            disabled={isAutoSaving}
             className="h-9 px-4 rounded-md font-medium transition-all active:scale-95 bg-[#30363D] text-[#E6EDF3] hover:bg-[#484f58] mr-2"
           >
-            <Save className="w-3.5 h-3.5 mr-2" />
+            {isAutoSaving ? <RefreshCcw className="w-3.5 h-3.5 animate-spin mr-2" /> : <Save className="w-3.5 h-3.5 mr-2" />}
             Save
           </Button>
 
@@ -551,19 +545,19 @@ toast({ title: 'Settings Saved' });
             onClick={handlePublish}
             disabled={isPublishing}
             className={`h-9 px-4 rounded-md font-medium transition-all active:scale-95 ${
-              site?.isPublished 
+              normalizeScalar(site?.isPublished) === true
                 ? 'bg-[#30363D] text-[#E6EDF3] hover:bg-[#484f58]' 
                 : 'bg-[#2F81F7] hover:bg-[#1F6FEB] text-white'
             }`}
           >
             {isPublishing ? (
               <RefreshCcw className="w-3.5 h-3.5 animate-spin mr-2" />
-            ) : site?.isPublished ? (
+            ) : normalizeScalar(site?.isPublished) === true ? (
               <Globe className="w-3.5 h-3.5 mr-2" />
             ) : (
               <Rocket className="w-3.5 h-3.5 mr-2" />
             )}
-            {site?.isPublished ? 'Unpublish' : 'Publish'}
+            {normalizeScalar(site?.isPublished) === true ? 'Unpublish' : 'Publish'}
           </Button>
 
           <Button

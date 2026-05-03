@@ -144,25 +144,46 @@ export const AuthLayout = () => {
   if (isLoading) return null;
 
   return (
-    <div className="flex w-full flex-col h-screen">
-      {/* <ExtensionBanner /> */}
+    <div className="flex w-full flex-col h-screen bg-background overflow-hidden">
       <div className="flex w-full min-h-screen relative">
-        <div className="hidden md:block w-[36%] relative bg-primary-50">
+        {/* Left Side: Premium Background Image with Overlay */}
+        <div className="hidden md:block w-[40%] relative overflow-hidden">
           <img
             src={getBackgroundImage()}
             alt="bg auth"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-[10000ms] hover:scale-110"
             key={theme ?? 'default'}
           />
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/40 to-transparent mix-blend-multiply" />
+          <div className="absolute inset-0 bg-black/10" />
+          
+          {/* Subtle logo/branding on the image side */}
+          <div className="absolute bottom-12 left-12 z-20">
+             <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
+                <p className="text-white text-sm font-medium tracking-wide">VibeBuilder v0.1</p>
+             </div>
+          </div>
         </div>
-        <div className="flex items-center justify-center w-full px-6 sm:px-20 md:w-[64%] md:px-[14%] lg:px-[16%] 2xl:px-[20%]">
-          <div className="absolute top-2 right-4">
-            <div className="flex flex-row gap-2">
+
+        {/* Right Side: Clean, Focused Login Area */}
+        <div className="flex items-center justify-center w-full px-6 sm:px-20 md:w-[60%] md:px-[10%] lg:px-[12%] 2xl:px-[15%] bg-background relative">
+          <div className="absolute top-8 right-8 z-50">
+            <div className="flex flex-row items-center gap-4 p-1 rounded-full bg-muted/40 backdrop-blur-sm border border-border/50">
               <ThemeSwitcher />
+              <div className="w-px h-4 bg-border/50" />
               <LanguageSelector />
             </div>
           </div>
-          {renderAuthContent()}
+          
+          <div className="w-full relative">
+            {/* Subtle background glow */}
+            <div className="absolute -top-[20%] -right-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute -bottom-[20%] -left-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+            
+            <div className="relative z-10">
+              {renderAuthContent()}
+            </div>
+          </div>
         </div>
       </div>
     </div>

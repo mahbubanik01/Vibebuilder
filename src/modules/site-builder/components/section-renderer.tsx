@@ -11,11 +11,11 @@ function HeroRenderer({ content }: { content: Record<string, string> }) {
 
   return (
     <section
-      className="relative flex flex-col items-center justify-center text-center py-40 px-6 overflow-hidden group"
+      className="relative flex flex-col items-center justify-center text-center py-48 px-6 overflow-hidden group animate-in fade-in duration-1000"
       style={
         hasBg
           ? {
-              backgroundImage: `linear-gradient(rgba(13,17,23,0.7), rgba(13,17,23,0.7)), url(${content.backgroundImageUrl})`,
+              backgroundImage: `linear-gradient(to bottom, rgba(13,17,23,0.8), rgba(13,17,23,0.6)), url(${content.backgroundImageUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               color: '#E6EDF3'
@@ -26,27 +26,35 @@ function HeroRenderer({ content }: { content: Record<string, string> }) {
             }
       }
     >
-      <div className="relative z-10 max-w-5xl mx-auto">
-        <h1 className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.95]" style={{ color: 'inherit' }}>
+      {/* Decorative background glow */}
+      {!hasBg && (
+        <>
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] translate-y-1/2" />
+        </>
+      )}
+
+      <div className="relative z-10 max-w-5xl mx-auto space-y-10">
+        <h1 className="text-7xl md:text-9xl font-black tracking-tight mb-8 leading-[0.85] animate-in slide-in-from-bottom-8 duration-700 ease-out">
           {content.heading || 'Design with Vibe.'}
         </h1>
         {content.subheading && (
-          <p className="text-lg md:text-xl opacity-70 mb-12 max-w-2xl mx-auto font-medium leading-relaxed" style={{ color: 'inherit' }}>
+          <p className="text-xl md:text-2xl opacity-80 mb-12 max-w-3xl mx-auto font-medium leading-relaxed animate-in slide-in-from-bottom-6 duration-700 delay-100 ease-out">
             {content.subheading}
           </p>
         )}
         {content.ctaText && (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in slide-in-from-bottom-4 duration-700 delay-200 ease-out">
             <a
               href={content.ctaUrl || '#'}
-              className="inline-flex items-center justify-center bg-[#2F81F7] text-white font-semibold px-10 py-4 rounded-md hover:bg-[#1F6FEB] transition-all active:scale-95 text-[15px]"
+              className="inline-flex items-center justify-center bg-[#2F81F7] text-white font-bold px-12 py-5 rounded-xl hover:bg-[#1F6FEB] hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 transition-all active:scale-95 text-[16px]"
             >
               {content.ctaText}
             </a>
-            {content.secondaryCta && (
+            {content.secondaryCta === 'true' && (
                <a
                 href="#"
-                className="inline-flex items-center justify-center border border-white/20 text-white font-semibold px-10 py-4 rounded-md hover:bg-white/10 transition-all active:scale-95 text-[15px]"
+                className="inline-flex items-center justify-center backdrop-blur-md bg-white/5 border border-white/10 text-white font-bold px-12 py-5 rounded-xl hover:bg-white/10 transition-all active:scale-95 text-[16px]"
               >
                 Learn More
               </a>
@@ -60,9 +68,9 @@ function HeroRenderer({ content }: { content: Record<string, string> }) {
 
 function TextRenderer({ content }: { content: Record<string, string> }) {
   return (
-    <section className="py-24 px-6 max-w-4xl mx-auto">
+    <section className="py-32 px-6 max-w-4xl mx-auto animate-in fade-in duration-700">
       <div className="prose prose-slate lg:prose-xl max-w-none">
-        <p className="text-[19px] leading-[1.8] text-[#1e293b] whitespace-pre-wrap font-medium opacity-90">
+        <p className="text-[21px] leading-[1.7] text-[#1e293b] whitespace-pre-wrap font-medium opacity-90 tracking-tight">
           {content.body || 'Text content will appear here.'}
         </p>
       </div>
@@ -74,20 +82,22 @@ function ImageRenderer({ content }: { content: Record<string, string> }) {
   const hasSrc = content.src && content.src.trim() !== '';
 
   return (
-    <section className="py-10 px-6 flex flex-col items-center">
-      {hasSrc ? (
-        <img
-          src={content.src}
-          alt={content.alt || ''}
-          className="max-w-full max-h-[500px] rounded-lg object-cover shadow-md"
-        />
-      ) : (
-        <div className="w-full max-w-xl h-64 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
-          No image URL provided
-        </div>
-      )}
+    <section className="py-16 px-6 flex flex-col items-center animate-in zoom-in-95 duration-700">
+      <div className="relative group">
+        {hasSrc ? (
+          <img
+            src={content.src}
+            alt={content.alt || ''}
+            className="max-w-full max-h-[600px] rounded-2xl object-cover shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]"
+          />
+        ) : (
+          <div className="w-[800px] h-[450px] bg-muted/30 rounded-2xl flex items-center justify-center text-muted-foreground border-2 border-dashed border-border/50">
+            No image URL provided
+          </div>
+        )}
+      </div>
       {content.caption && (
-        <p className="mt-3 text-sm text-muted-foreground italic">{content.caption}</p>
+        <p className="mt-6 text-[15px] text-muted-foreground/80 italic font-medium tracking-tight">{content.caption}</p>
       )}
     </section>
   );
@@ -107,21 +117,21 @@ function GalleryRenderer({ content }: { content: Record<string, string> }) {
 
   if (images.length === 0) {
     return (
-      <section className="py-10 px-6 max-w-5xl mx-auto text-center text-muted-foreground">
+      <section className="py-20 px-6 max-w-5xl mx-auto text-center text-muted-foreground font-medium opacity-50 italic">
         Empty Gallery
       </section>
     );
   }
 
   return (
-    <section className="py-12 px-6 max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <section className="py-24 px-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {images.map((src, index) => (
-          <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+          <div key={index} className="aspect-square bg-muted/20 rounded-2xl overflow-hidden flex items-center justify-center shadow-md hover:shadow-2xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 duration-700" style={{ transitionDelay: `${index * 100}ms` }}>
             {src ? (
-              <img src={src} alt={`Gallery item ${index + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+              <img src={src} alt={`Gallery item ${index + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
             ) : (
-              <span className="text-muted-foreground text-sm">Image {index + 1}</span>
+              <span className="text-muted-foreground text-sm font-bold opacity-30">Image {index + 1}</span>
             )}
           </div>
         ))}
@@ -132,28 +142,28 @@ function GalleryRenderer({ content }: { content: Record<string, string> }) {
 
 function ContactRenderer({ content }: { content: Record<string, string> }) {
   return (
-    <section className="py-32 px-6 max-w-2xl mx-auto">
-      <div className="space-y-12">
-        <div className="text-center">
-          <h2 className="text-4xl font-bold tracking-tighter mb-4 text-[#1e293b]">Get in Touch</h2>
-          <p className="text-[#64748b] text-[15px]">We usually respond within 24 hours.</p>
+    <section className="py-40 px-6 max-w-3xl mx-auto animate-in fade-in duration-1000">
+      <div className="space-y-16">
+        <div className="text-center space-y-4">
+          <h2 className="text-5xl font-black tracking-tighter text-[#1e293b]">{content.title || 'Get in Touch'}</h2>
+          <p className="text-[#64748b] text-lg font-medium">{content.subtitle || 'We usually respond within 24 hours.'}</p>
         </div>
-        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            <div>
-              <Label className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-2 block">{content.nameLabel || 'Name'}</Label>
-              <Input className="border-x-0 border-t-0 border-b border-[#e2e8f0] rounded-none px-0 bg-transparent focus:border-[#2F81F7] transition-all h-10 text-[15px] focus-visible:ring-0" placeholder="Jane Doe" readOnly />
+        <form className="p-10 rounded-3xl bg-white border border-[#e2e8f0] shadow-2xl shadow-slate-200/50 space-y-10" onSubmit={(e) => e.preventDefault()}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+            <div className="space-y-3">
+              <Label className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#94a3b8] ml-1">{content.nameLabel || 'Name'}</Label>
+              <Input className="border-x-0 border-t-0 border-b-2 border-[#e2e8f0] rounded-none px-1 bg-transparent focus:border-[#2F81F7] transition-all h-12 text-[17px] focus-visible:ring-0 placeholder:text-[#cbd5e1]" placeholder="Jane Doe" readOnly />
             </div>
-            <div>
-              <Label className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-2 block">{content.emailLabel || 'Email'}</Label>
-              <Input className="border-x-0 border-t-0 border-b border-[#e2e8f0] rounded-none px-0 bg-transparent focus:border-[#2F81F7] transition-all h-10 text-[15px] focus-visible:ring-0" type="email" placeholder="jane@studio.com" readOnly />
+            <div className="space-y-3">
+              <Label className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#94a3b8] ml-1">{content.emailLabel || 'Email'}</Label>
+              <Input className="border-x-0 border-t-0 border-b-2 border-[#e2e8f0] rounded-none px-1 bg-transparent focus:border-[#2F81F7] transition-all h-12 text-[17px] focus-visible:ring-0 placeholder:text-[#cbd5e1]" type="email" placeholder="jane@studio.com" readOnly />
             </div>
           </div>
-          <div>
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] mb-2 block">{content.messageLabel || 'Message'}</Label>
-            <Textarea className="border-x-0 border-t-0 border-b border-[#e2e8f0] rounded-none px-0 bg-transparent focus:border-[#2F81F7] transition-all min-h-[100px] text-[15px] focus-visible:ring-0 resize-none" placeholder="Tell us about your project..." readOnly />
+          <div className="space-y-3">
+            <Label className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#94a3b8] ml-1">{content.messageLabel || 'Message'}</Label>
+            <Textarea className="border-x-0 border-t-0 border-b-2 border-[#e2e8f0] rounded-none px-1 bg-transparent focus:border-[#2F81F7] transition-all min-h-[120px] text-[17px] focus-visible:ring-0 resize-none placeholder:text-[#cbd5e1]" placeholder="Tell us about your project..." readOnly />
           </div>
-          <Button className="w-full h-14 bg-[#2F81F7] hover:bg-[#1F6FEB] text-white font-bold rounded-md shadow-xl text-[15px]" size="lg">
+          <Button className="w-full h-16 bg-[#2F81F7] hover:bg-[#1F6FEB] text-white font-black rounded-xl shadow-xl shadow-blue-500/20 text-[16px] transition-all active:scale-[0.98]" size="lg">
             {content.buttonText || 'Send Message'}
           </Button>
         </form>
@@ -163,12 +173,12 @@ function ContactRenderer({ content }: { content: Record<string, string> }) {
 }
 
 function SpacerRenderer({ content }: { content: Record<string, string> }) {
-  const height = parseInt(content.height || '40', 10);
+  const height = parseInt(content.height || '80', 10);
   const showDivider = content.showDivider === 'true';
 
   return (
     <div style={{ height: `${height}px` }} className="w-full max-w-5xl mx-auto flex items-center justify-center">
-      {showDivider && <Separator className="w-full" />}
+      {showDivider && <Separator className="w-full opacity-50" />}
     </div>
   );
 }
@@ -186,8 +196,8 @@ function VideoRenderer({ content }: { content: Record<string, string> }) {
   }
 
   return (
-    <section className="py-12 px-6 max-w-5xl mx-auto">
-      <div className="aspect-video bg-muted rounded-xl overflow-hidden shadow-lg border border-border/50">
+    <section className="py-24 px-6 max-w-6xl mx-auto animate-in zoom-in-95 duration-1000">
+      <div className="aspect-video bg-[#0f172a] rounded-3xl overflow-hidden shadow-2xl border border-white/5 relative group">
         {embedUrl ? (
           <iframe
             src={embedUrl}
@@ -196,13 +206,16 @@ function VideoRenderer({ content }: { content: Record<string, string> }) {
             allowFullScreen
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-            <p>Enter a valid YouTube or Vimeo URL</p>
+          <div className="w-full h-full flex flex-col items-center justify-center text-white/40 bg-slate-900">
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 transition-transform duration-500">
+               <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white/60 border-b-[10px] border-b-transparent ml-2" />
+            </div>
+            <p className="font-bold tracking-widest text-[11px] uppercase">Enter Video URL</p>
           </div>
         )}
       </div>
       {content.caption && (
-        <p className="mt-4 text-center text-sm text-muted-foreground">{content.caption}</p>
+        <p className="mt-8 text-center text-[15px] text-[#64748b] font-medium tracking-tight italic">{content.caption}</p>
       )}
     </section>
   );
@@ -212,12 +225,12 @@ function CTARenderer({ content }: { content: Record<string, string> }) {
   const align = content.align || 'center';
 
   return (
-    <section className={`py-32 px-6 max-w-7xl mx-auto flex flex-col items-${align === 'center' ? 'center' : align === 'right' ? 'end' : 'start'} text-${align}`}>
-      <h2 className="text-5xl md:text-6xl font-bold mb-6 tracking-tighter leading-[1.1]">{content.title || 'Ready to launch your vision?'}</h2>
-      {content.description && <p className="text-xl text-[#64748b] mb-12 max-w-2xl font-medium">{content.description}</p>}
+    <section className={`py-40 px-6 max-w-7xl mx-auto flex flex-col items-${align === 'center' ? 'center' : align === 'right' ? 'end' : 'start'} text-${align} animate-in fade-in slide-in-from-bottom-8 duration-1000`}>
+      <h2 className="text-6xl md:text-8xl font-black mb-10 tracking-tight leading-[0.95] text-[#1e293b]">{content.title || 'Ready to launch your vision?'}</h2>
+      {content.description && <p className="text-2xl text-[#64748b] mb-16 max-w-3xl font-medium leading-relaxed">{content.description}</p>}
       <Button 
         size="lg" 
-        className="px-12 h-16 rounded-md font-semibold bg-[#2F81F7] hover:bg-[#1F6FEB] text-white shadow-xl border-none text-lg active:scale-95 transition-all"
+        className="px-16 h-20 rounded-2xl font-black bg-[#2F81F7] hover:bg-[#1F6FEB] text-white shadow-2xl shadow-blue-500/30 border-none text-[18px] active:scale-95 transition-all"
         onClick={() => content.url && window.open(content.url, '_blank')}
       >
         {content.buttonText || 'Get Started Free'}
@@ -235,16 +248,19 @@ function FeaturesRenderer({ content }: { content: Record<string, string> }) {
   }
 
   return (
-    <section className="py-32 px-6 max-w-7xl mx-auto">
-      <h2 className="text-4xl md:text-5xl font-bold text-center mb-20 tracking-tighter">{content.title || 'Studio Features'}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
+    <section className="py-40 px-6 max-w-7xl mx-auto">
+      <div className="text-center mb-32 space-y-4">
+        <h2 className="text-6xl md:text-7xl font-black tracking-tighter text-[#1e293b]">{content.title || 'Studio Features'}</h2>
+        {content.subtitle && <p className="text-xl text-[#64748b] font-medium">{content.subtitle}</p>}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
         {items.map((item: any, i: number) => (
-          <div key={i} className="flex flex-col items-start group">
-            <div className="w-14 h-14 rounded-md bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center mb-8 group-hover:border-[#2F81F7] transition-all duration-300">
-               <div className="text-2xl">{item.icon || '✨'}</div>
+          <div key={i} className="flex flex-col items-start group animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ transitionDelay: `${i * 150}ms` }}>
+            <div className="w-16 h-16 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center mb-10 group-hover:border-[#2F81F7] group-hover:bg-[#2F81F7]/5 group-hover:scale-110 transition-all duration-500 ease-out">
+               <div className="text-3xl">{item.icon || '✨'}</div>
             </div>
-            <h4 className="text-[22px] font-bold mb-4 tracking-tight">{item.title || 'Feature Title'}</h4>
-            <p className="text-[#64748b] leading-relaxed text-[15px]">{item.desc || 'Feature description goes here.'}</p>
+            <h4 className="text-[26px] font-black mb-6 tracking-tight text-[#1e293b] group-hover:text-[#2F81F7] transition-colors">{item.title || 'Feature Title'}</h4>
+            <p className="text-[#64748b] leading-relaxed text-[17px] font-medium">{item.desc || 'Feature description goes here.'}</p>
           </div>
         ))}
       </div>

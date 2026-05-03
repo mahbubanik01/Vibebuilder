@@ -39,43 +39,42 @@ function ErrorState({ title, message, backendError = false }: { title: string; m
   );
 }
 
+import { normalizeScalar, safeJsonParse } from '@/lib/data-utils';
+
 export function LiveRendererPage() {
   const { siteSlug, pageSlug = 'home' } = useParams<{ siteSlug: string; pageSlug?: string }>();
   const [errorInfo, setErrorInfo] = useState<string>('');
 
   const { siteQuery, pagesQuery, site, pages, activePage, error } = useLiveSite(siteSlug || '', pageSlug);
-  console.log('[LiveRendererPage] state:', { site, pages, activePage, error });
 
   useEffect(() => {
     if (error) {
       console.error('Live site error:', error);
-      const errorStr = String(error);
-      setErrorInfo(errorStr);
+      setErrorInfo(String(error));
     }
   }, [error]);
 
-  const displaySiteName = Array.isArray(site?.siteName) ? site?.siteName[0] : (site?.siteName || 'Vibe Site');
+  const displaySiteName = normalizeScalar(site?.siteName) || 'Vibe Site';
 
   useEffect(() => {
     if (site && activePage) {
-      document.title = `${activePage.name} | ${displaySiteName} - VibeBuilder`;
+      const pageName = normalizeScalar(activePage.name);
+      document.title = `${pageName} | ${displaySiteName} - VibeBuilder`;
       
-      try {
-        const metadata = typeof site.metadata === 'string' ? JSON.parse(site.metadata || '{}') : site.metadata;
-        if (metadata?.description) {
-          let metaDesc = document.querySelector('meta[name="description"]');
-          if (!metaDesc) {
-            metaDesc = document.createElement('meta');
-            metaDesc.setAttribute('name', 'description');
-            document.head.appendChild(metaDesc);
-          }
-          metaDesc.setAttribute('content', metadata.description);
+      const rawMetadata = site.metadata;
+      const metadata = typeof rawMetadata === 'string' ? safeJsonParse(rawMetadata, {}) : (rawMetadata || {});
+      
+      if (metadata?.description) {
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (!metaDesc) {
+          metaDesc = document.createElement('meta');
+          metaDesc.setAttribute('name', 'description');
+          document.head.appendChild(metaDesc);
         }
-      } catch (e) {
-        console.error('Error parsing site metadata', e);
+        metaDesc.setAttribute('content', metadata.description);
       }
     }
-  }, [site, activePage]);
+  }, [site, activePage, displaySiteName]);
 
   if (!siteSlug) {
     return <ErrorState title="404" message="No site specified" />;
@@ -83,79 +82,58 @@ export function LiveRendererPage() {
 
   const isLoading = siteQuery.isLoading || pagesQuery.isLoading;
   const isError = siteQuery.isError || pagesQuery.isError;
-
-  // Check if the error is about missing backend schema
   const isSchemaError = errorInfo.includes('does not exist') || errorInfo.includes('Cannot read');
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  if (isLoading) return <LoadingState />;
 
   if (isError) {
     return (
       <ErrorState 
         title={isSchemaError ? "Backend Not Configured" : "Error"} 
         message={isSchemaError 
-          ? "The VibeSite database table is not set up in Selise Blocks. Please contact your administrator to create the schema." 
-          : `Failed to load site: ${errorInfo || 'Unknown error'}`}
+          ? "The VibeSite database table is not set up. Please contact your administrator." 
+          : `Failed to load site: ${errorInfo}`}
         backendError={isSchemaError}
       />
     );
   }
 
-  if (!site) {
-    return (
-      <ErrorState 
-        title="Site Not Found" 
-        message={`The site "${siteSlug}" doesn't exist or is not published.`}
-      />
-    );
+  if (!site) return <ErrorState title="Site Not Found" message={`The site "${siteSlug}" doesn't exist or is not published.`} />;
+
+  if (normalizeScalar(site?.isPublished) !== true) {
+    return <ErrorState title="Site Not Published" message="This site exists but is not yet published." />;
   }
 
-  const isPublished = (Array.isArray(site?.isPublished) ? site?.isPublished[0] : site?.isPublished) === true;
-
-  if (!isPublished) {
-    return (
-      <ErrorState 
-        title="Site Not Published" 
-        message={`This site exists but is not yet published. Publish it from the Site Builder.`}
-      />
-    );
-  }
-
-  if (!activePage) {
-    return (
-      <ErrorState 
-        title="Page Not Found" 
-        message={`The page "${pageSlug}" doesn't exist.`}
-      />
-    );
-  }
+  if (!activePage) return <ErrorState title="Page Not Found" message={`The page "${pageSlug}" doesn't exist.`} />;
 
   return (
-    <div className="min-h-screen bg-[#0D1117] flex flex-col">
-      <nav className="bg-[#161B22] border-b border-[#30363D] sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex justify-between h-16 items-center">
+    <div className="min-h-screen bg-[#0D1117] flex flex-col selection:bg-[#2F81F7]/30">
+      <nav className="bg-[#0D1117]/80 backdrop-blur-xl border-b border-[#30363D]/50 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex justify-between h-20 items-center">
             <div className="flex items-center">
-              <Link to={`/live/${siteSlug}`} className="text-[17px] font-bold text-[#E6EDF3] tracking-tight hover:text-[#2F81F7] transition-colors">
+              <Link to={`/live/${siteSlug}`} className="text-xl font-black text-[#E6EDF3] tracking-tighter hover:text-[#2F81F7] transition-all active:scale-95">
                 {displaySiteName}
               </Link>
             </div>
-            <div className="flex items-center space-x-2">
-              {pages.map((page) => (
-                <Link
-                  key={page.slug}
-                  to={`/live/${siteSlug}/${page.slug}`}
-                  className={`text-[13px] font-semibold px-4 py-1.5 rounded-md transition-all ${
-                    page.slug === activePage?.slug
-                      ? 'text-[#2F81F7] bg-[#2F81F7]/10'
-                      : 'text-[#9DA7B3] hover:text-[#E6EDF3] hover:bg-[#30363D]'
-                  }`}
-                >
-                  {page.name}
-                </Link>
-              ))}
+            <div className="flex items-center gap-2 bg-[#161B22] p-1 rounded-xl border border-[#30363D]/50">
+              {pages.map((page) => {
+                const pName = normalizeScalar(page.name);
+                const pSlug = normalizeScalar(page.slug);
+                return (
+                  <Link
+                    key={pSlug}
+                    to={`/live/${siteSlug}/${pSlug}`}
+                    className={`text-[13px] font-bold px-5 py-2 rounded-lg transition-all ${
+                      pSlug === activePage?.slug
+                        ? 'text-[#E6EDF3] bg-[#30363D] shadow-lg'
+                        : 'text-[#9DA7B3] hover:text-[#E6EDF3] hover:bg-[#30363D]/50'
+                    }`}
+                  >
+                    {pName}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
