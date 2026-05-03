@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html.dark {
+  transition: background-color var(--transition-duration) ease;
+}
+
+.theme-toggle-icon {
+  transition: all var(--transition-duration) ease;
+}
+
+@layer utilities {
+  .glass-morphism {
+    @apply bg-[#161B22]/80 backdrop-blur-xl border border-[#30363D] shadow-xl;
+  }
+
+  .premium-card {
+    @apply bg-[#161B22] rounded-xl border border-[#30363D] shadow-sm hover:border-[#484f58] transition-all duration-200;
+  }
+
+  .premium-gradient {
+    background: #161B22; 
+  }
+
+  .glow-effect:hover {
+    box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.1);
+  }
+
+  .studio-bg {
+    background-color: #0D1117;
+    background-image: radial-gradient(#30363D 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(-5%);
+    }
+    50% {
+      transform: translateY(0);
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 3s infinite;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #0D1117;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-[#30363d] rounded-full hover:bg-[#484f58] transition-colors;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[#30363d];
+  }
+  body {
+    background-color: #0D1117;
+    color: #E6EDF3;
+    @apply antialiased;
+  }
+
+  :root {
+    --background: #0D1117;
+    --foreground: #E6EDF3;
+    --card: #161B22;
+    --card-foreground: #E6EDF3;
+    --popover: #161B22;
+    --popover-foreground: #E6EDF3;
+    --muted: #0D1117;
+    --muted-foreground: #9DA7B3;
+    --accent: #161B22;
+    --accent-foreground: #E6EDF3;
+    --destructive: #f85149;
+    --destructive-foreground: #ffffff;
+    --border: #30363D;
+    --input: #30363D;
+    --ring: #2F81F7;
+    --radius: 0.5rem;
+  }
+}
+
+.ql-toolbar {
+  @apply rounded-t-md border-[#30363D] bg-[#161B22] !border-b-0;
+}
+.ql-container {
+  @apply rounded-b-md border-[#30363D] bg-[#0D1117];
+}
+.ql-editor {
+  @apply text-[#E6EDF3] min-h-[150px];
+}
+.ql-stroke {
+  stroke: #9DA7B3 !important;
+}
+.ql-fill {
+  fill: #9DA7B3 !important;
+}
+.ql-picker {
+  color: #9DA7B3 !important;
+}
+
+::selection {
+  background-color: rgba(47, 129, 247, 0.3);
+  color: #E6EDF3;
+}

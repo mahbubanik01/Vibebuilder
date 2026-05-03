@@ -1,0 +1,6 @@
+$headers = @{
+    "Content-Type" = "application/json"
+    "Authorization" = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnRfaWQiOiJEYTA0Mjg3YWRiODhkNGY4N2IzYjBlZGU4MTEyMDQ0ZDIiLCJzdWIiOiJibG9ja3N8OGUwMjNkOGItMGYzMC00N2UwLThkNzktMjFkMWEyY2MzNTBhIiwidXNlcl9pZCI6IjhlMDIzZDhiLTBmMzAtNDdlMC04ZDc5LTIxZDFhMmNjMzUwYSIsImlhdCI6MTc3NzY2NDQ0NCwib3JnX2lkIjoiZGVmYXVsdCIsImVtYWlsIjoibWFoYnViLmFua2swMUBub3J0aHNvdXRoLmVkdSIsInVzZXJfbmFtZSI6Im1haGJ1Yi5hbmlrMDFAbm9ydGhzb3V0aC5lZHUiLCJuYW1lIjoiTWFoYnViIEhhc2FuIiwicGhvbmUiOiIiLCJyb2xlcyI6InVzZXIiLCJuYmYiOjE3Nzc2NjQ0NDQsImV4cCI6MTc3NzY2NTM0NCwiaXNzIjoiU2VsaXNlQmxvY2tzIiwiYXVkIjoiaHR0cHM6Ly9kYnRra3YtZHpmcGouc2VsaXNlYmxvY2tzLmNvbSJ9.5aE5QM-eg40NborHTGlNul83J1r9c9hI1tjXPn_klIn0kIkl9k-wOdAX8Och1C5iPdPW03e9XVsM39KtmpCU_AMc8bbQTlj_jxt2nxmY0rNMILSEGS2K0aou3hJe_ffV-eMRvXvaQXndQuNnxsiLisrDat78YN_1nTNvdtnL8hU8qF1njm0VRESrJGewKRfZHMimiG0V8dJ3yl-Alp63aznnKvSd-nzc7XyZOh66V9TL6aeqeI7SSw_eub-PqsEOqGhnskWVio-fuHIo7X8c8ztunGo6GbV56LeykdrLT9GlCoOcdCCUh5nkMYMxmsWpvZIgbjdZKsCyoOTwbi0H5A"
+}
+$body = '{"query":"{ getVibeSites(input: {}) { items { siteName } } }"}'
+Invoke-WebRequest -Uri "https://api.seliseblocks.com/uds/v1/dbtkkv/gateway" -Method POST -Headers $headers -Body $body
