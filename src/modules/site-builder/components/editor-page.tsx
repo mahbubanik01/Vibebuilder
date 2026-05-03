@@ -86,9 +86,10 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
                    (pagesDataRes as any)?.getVibePage?.items ||
                    (pagesDataRes as any)?.data?.getVibePages?.items ||
                    [];
-                   
-  console.log('[Editor] Raw pages - trying all paths, found:', rawPages.length);
+                    
+  console.log('[Editor] FULL API response:', JSON.stringify(pagesDataRes).substring(0, 1000));
   console.log('[Editor] Data keys:', Object.keys(pagesDataRes || {}));
+  console.log('[Editor] getVibePages:', (pagesDataRes as any)?.getVibePages);
                     
   const pages: Page[] = Array.isArray(rawPages) ? rawPages.map(p => ({
     ...p,
