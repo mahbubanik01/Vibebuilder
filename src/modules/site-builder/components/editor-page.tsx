@@ -80,10 +80,15 @@ export function EditorPage() {
                (siteDataRes as any)?.VibeSites?.items?.[0] || 
                (isLocalSite ? JSON.parse(localStorage.getItem('vibe-sites') || '[]').find((s: any) => s.ItemId === siteId) : null);
 
-  const rawPages = (pagesDataRes as any)?.getVibePages?.items || 
-                    (pagesDataRes as any)?.VibePages?.items || 
-                    (pagesDataRes as any)?.items || 
-                    (isLocalSite ? JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]') : []);
+const rawPages = (pagesDataRes as any)?.getVibePages?.items || 
+                   (pagesDataRes as any)?.VibePages?.items || 
+                   (pagesDataRes as any)?.VibePage?.items ||
+                   (pagesDataRes as any)?.getVibePage?.items ||
+                   (pagesDataRes as any)?.data?.getVibePages?.items ||
+                   [];
+                   
+  console.log('[Editor] Raw pages - trying all paths, found:', rawPages.length);
+  console.log('[Editor] Data keys:', Object.keys(pagesDataRes || {}));
                     
   const pages: Page[] = Array.isArray(rawPages) ? rawPages.map(p => ({
     ...p,
@@ -232,8 +237,7 @@ try {
       
       console.log('[SAVE] API response:', res);
       toast({ title: 'Saved Successfully' });
-      // Force reload to get fresh data
-      window.location.reload();
+      // Don't force reload - let the query refetch
     } catch (err) {
       toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
