@@ -29,6 +29,14 @@ import { Input } from '@/components/ui-kit/input';
 import { Textarea } from '@/components/ui-kit/textarea';
 import { SectionEditor } from './section-editor';
 
+type ViewportMode = 'desktop' | 'tablet' | 'mobile';
+
+const VIEWPORT_WIDTHS: Record<ViewportMode, string> = {
+  desktop: '100%',
+  tablet: '768px',
+  mobile: '375px',
+};
+
 export function EditorPage() {
   const { siteId, pageId } = useParams();
   const navigate = useNavigate();
