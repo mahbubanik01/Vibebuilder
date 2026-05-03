@@ -96,7 +96,7 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
     ItemId: normalizeScalar(p.ItemId),
     name: normalizeScalar(p.name),
     slug: normalizeScalar(p.slug),
-    sections: safeJsonParse(p.sections, [])
+    sections: safeJsonParse(normalizeScalar(p.sections), [])
   })) : [];
 
   // Debug: Show first page's sections count
@@ -151,7 +151,7 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
           siteId: [siteId],
           name: [home.name],
           slug: [home.slug],
-          sections: JSON.stringify(home.sections),
+          sections: [JSON.stringify(home.sections)],
           sortOrder: 0
         }
       });
@@ -162,16 +162,23 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
   useEffect(() => {
     if (!activePage || isLocalSite) return;
 
-    const hasChanges = JSON.stringify(activePage.sections) !== JSON.stringify(debouncedEditorPage.sections);
+    const currentSections = JSON.stringify(editorPage.sections);
+    const debouncedSections = JSON.stringify(debouncedEditorPage.sections);
+    const apiSections = JSON.stringify(activePage.sections);
     
-    if (hasChanges && debouncedEditorPage.slug === activePage.slug) {
+    // Only save if the editor state has settled (debounced matches current)
+    // and it differs from what's currently in the API
+    const hasSettled = currentSections === debouncedSections;
+    const hasChanges = debouncedSections !== apiSections;
+    
+    if (hasSettled && hasChanges && debouncedEditorPage.slug === activePage.slug) {
       console.log('[AUTO-SAVE] Saving changes for:', activePage.slug);
       setIsAutoSaving(true);
       
       updatePage({
-        filter: JSON.stringify({ slug: activePage.slug, siteId: siteId }),
+        filter: JSON.stringify({ slug: [activePage.slug], siteId: [siteId] }),
         input: {
-          sections: JSON.stringify(debouncedEditorPage.sections),
+          sections: [JSON.stringify(debouncedEditorPage.sections)],
         }
       }).then(() => {
         setActivePage(debouncedEditorPage);
@@ -181,13 +188,20 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
         setIsAutoSaving(false);
       });
     }
-  }, [debouncedEditorPage, activePage, updatePage, isLocalSite]);
+  }, [debouncedEditorPage, editorPage, activePage, updatePage, isLocalSite, siteId]);
 
   // 3. Local Site Auto-save
   useEffect(() => {
     if (!activePage || !isLocalSite) return;
     
-    if (JSON.stringify(activePage.sections) !== JSON.stringify(debouncedEditorPage.sections)) {
+    const currentSections = JSON.stringify(editorPage.sections);
+    const debouncedSections = JSON.stringify(debouncedEditorPage.sections);
+    const apiSections = JSON.stringify(activePage.sections);
+
+    const hasSettled = currentSections === debouncedSections;
+    const hasChanges = debouncedSections !== apiSections;
+    
+    if (hasSettled && hasChanges) {
       const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
       const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
       if (idx !== -1) {
@@ -196,7 +210,7 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
         setActivePage(debouncedEditorPage);
       }
     }
-  }, [debouncedEditorPage, activePage, isLocalSite, siteId]);
+  }, [debouncedEditorPage, editorPage, activePage, isLocalSite, siteId]);
 
 const handleManualSave = async () => {
     if (!activePage) {
@@ -220,19 +234,18 @@ const handleManualSave = async () => {
     }
     
 try {
-      // Use ItemId in filter - more precise, also need siteId as array
+      // Use ItemId in filter - more precise, ItemId is usually a scalar in filters for mutations
       const pageItemId = activePage?.ItemId || activePage?.itemId;
       const filter = pageItemId 
         ? JSON.stringify({ ItemId: pageItemId })
-        : JSON.stringify({ slug: activePage.slug, siteId: [siteId] });
+        : JSON.stringify({ slug: [activePage.slug], siteId: [siteId] });
       console.log('[SAVE] Using filter:', filter);
       console.log('[SAVE] Sections data:', activePage.sections);
-      console.log('[SAVE] Sections JSON:', JSON.stringify(activePage.sections).substring(0,100));
        
       const res: any = await updatePage({
         filter: filter,
         input: {
-          sections: JSON.stringify(activePage.sections),
+          sections: [JSON.stringify(activePage.sections)],
         }
       });
       
@@ -261,6 +274,7 @@ try {
 
   const handlePublish = async () => {
     if (!site) return;
+
     if (isLocalSite) {
        const allSites = JSON.parse(localStorage.getItem('vibe-sites') || '[]');
        const idx = allSites.findIndex((s: any) => s.ItemId === siteId);
@@ -271,49 +285,68 @@ try {
        }
        return;
     }
-    
-    const currentStatus = (Array.isArray(site.isPublished) ? site.isPublished[0] : site.isPublished) === true;
-    const newStatus = !currentStatus;
 
     try {
+      // Toggle published status
+      const currentStatus = normalizeScalar(site.isPublished) === true;
+      const newStatus = !currentStatus;
+
+      console.log('[PUBLISH] Toggling status to:', newStatus);
+
       const res: any = await updateSite({
-        filter: JSON.stringify({ ItemId: [siteId] }),
-        input: { isPublished: newStatus }
+        filter: JSON.stringify({ ItemId: [siteId] }), // VibeSites filter uses array for ItemId
+        input: { isPublished: [newStatus] } // VibeSites input uses array for booleans
       });
-      console.log('Publish result:', res);
-      
-      if (!res?.updateVibeSite?.acknowledged) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update publication status.' });
+
+      if (!res?.updateVibeSite?.acknowledged || res?.updateVibeSite?.totalImpactedData === 0) {
+        console.warn('[PUBLISH] Mutation failed or no data impacted:', res);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update publication status. Filter might not have matched.' });
         return;
       }
+
+      const slug = normalizeScalar(site.siteSlug);
+      const liveUrl = slug ? `/live/${slug}/home` : '';
+
+      toast({
+        variant: newStatus ? 'success' : 'default',
+        title: newStatus ? 'Site Published' : 'Site Unpublished',
+        description: newStatus ? 'Your site is now live!' : 'Your site is now private.',
+        action: newStatus && liveUrl ? (
+          <Button variant="outline" size="sm" onClick={() => window.open(liveUrl, '_blank')}>
+            View Site
+          </Button>
+        ) : undefined
+      });
+
+      // Refetch site data
+      refetchSite();
     } catch (err) {
       console.error('Publish error:', err);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to publish site. Check console for details.' });
-      return;
     }
+  };
 
-    const isPublishing = newStatus;
-    // Handle siteSlug as array
-    const slug = Array.isArray(site.siteSlug) ? site.siteSlug[0] : site.siteSlug;
-    const liveUrl = slug ? `/live/${slug}/home` : '';
+  const handleSaveSettings = async (data: { name: string; slug: string; description: string }) => {
+    try {
+      console.log('[SETTINGS] Saving site settings:', data);
+      const res: any = await updateSite({
+        filter: JSON.stringify({ ItemId: [siteId] }),
+        input: {
+          siteName: [data.name],
+          siteSlug: [data.slug],
+          metadata: JSON.stringify({ description: data.description }) // metadata is a scalar string
+        }
+      });
 
-    toast({
-      variant: isPublishing ? 'success' : 'default',
-      title: isPublishing ? 'Site Published' : 'Site Unpublished',
-      description: isPublishing 
-        ? (slug ? `Live at ${liveUrl}` : 'Your site is now live!')
-        : 'Your site is no longer publicly accessible.',
-      action: isPublishing && slug ? (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="bg-white/10 hover:bg-white/20 border-white/20 text-white"
-          onClick={() => window.open(liveUrl, '_blank')}
-        >
-          View Site
-        </Button>
-      ) : undefined,
-    });
+      if (res?.updateVibeSite?.acknowledged) {
+        toast({ title: 'Success', description: 'Site settings updated successfully.' });
+        setIsSettingsOpen(false);
+        refetchSite();
+      }
+    } catch (err) {
+      console.error('Settings save error:', err);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update site settings.' });
+    }
   };
 
   const handleUpdateSiteSettings = async () => {
@@ -326,14 +359,14 @@ try {
           allSites[idx].metadata = JSON.stringify({ description: siteDescription });
           localStorage.setItem('vibe-sites', JSON.stringify(allSites));
           setIsSiteSettingsOpen(false);
-toast({ title: 'Settings Saved' });
+          toast({ title: 'Settings Saved' });
         }
         return;
     }
     await updateSite({
-      filter: "{\"ItemId\":\"" + siteId + "\"}",
+      filter: JSON.stringify({ ItemId: siteId }),
       input: {
-        siteName: siteTitle,
+        siteName: [siteTitle],
         metadata: JSON.stringify({ description: siteDescription })
       }
     });
@@ -384,7 +417,7 @@ toast({ title: 'Settings Saved' });
        return;
     }
     await deletePage({
-      filter: "{\"slug\":{\"$eq\":\"" + slug + "\"},\"siteId\":{\"$eq\":\"" + siteId + "\"}}",
+      filter: JSON.stringify({ slug: [slug], siteId: [siteId] }),
       input: { isHardDelete: false }
     });
     if (pageId === slug) {
@@ -405,7 +438,7 @@ toast({ title: 'Settings Saved' });
        return;
     }
     await updatePage({
-      filter: "{\"slug\":{\"$eq\":\"" + oldSlug + "\"},\"siteId\":{\"$eq\":\"" + siteId + "\"}}",
+      filter: JSON.stringify({ slug: [oldSlug], siteId: [siteId] }),
       input: { name: [name], slug: [slug] }
     });
     if (oldSlug !== slug) {
@@ -437,10 +470,10 @@ toast({ title: 'Settings Saved' });
       for (const page of DEMO_PAGES) {
         await createPage({
           input: {
-            siteId: newSiteId,
-            name: page.name,
-            slug: page.slug,
-            sections: JSON.stringify(page.sections),
+            siteId: [newSiteId],
+            name: [page.name],
+            slug: [page.slug],
+            sections: [JSON.stringify(page.sections)],
           },
         });
       }

@@ -93,9 +93,9 @@ export function SiteListPage() {
     try {
       const res = await createSite({
         input: {
-          ownerId: ownerId,
-          siteName: newSiteName,
-          siteSlug: siteSlug,
+          ownerId: [ownerId],
+          siteName: [newSiteName],
+          siteSlug: [siteSlug],
           metadata: JSON.stringify({ title: newSiteName }),
         },
       }) as any;

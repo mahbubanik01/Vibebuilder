@@ -137,61 +137,53 @@ export const getSiteBySlug = async (siteSlug: string) => {
   console.log('[LiveSite] Fetching site with slug:', siteSlug);
   
   try {
-    // Query all sites and filter in JS - no filter to avoid 400 errors
+    // Attempt to use a filter first for efficiency
     const result = await graphqlClient.query({
       query: GET_VIBE_SITES_QUERY,
       variables: {
         input: {
-          sort: "{\"CreatedDate\":-1}",
+          filter: JSON.stringify({ siteSlug: [siteSlug] }), // Match the array-wrapped storage pattern
           pageNo: 1,
-          pageSize: 100,
+          pageSize: 1,
         },
       },
     });
     
     console.log('[LiveSite] Query result:', result);
     
-    // Filter to find matching siteSlug and isPublished
     const items = (result as any)?.getVibeSites?.items || (result as any)?.VibeSites?.items || [];
-    console.log('[LiveSite] Total sites found:', items.length);
     
-    const matchingSite = items.find((site: any) => {
-      const isPublished = (Array.isArray(site.isPublished) ? site.isPublished[0] : site.isPublished) === true;
-      const slug = site.siteSlug;
-      const slugMatch = Array.isArray(slug) ? slug.includes(siteSlug) : slug === siteSlug;
-      
-      console.log(`[LiveSite] Checking site: "${site.siteName}" | Slug: ${JSON.stringify(slug)} | ItemId: ${JSON.stringify(site.ItemId)} | Published: ${isPublished} | Match: ${slugMatch}`);
-      
-      return isPublished && slugMatch;
-    });
+    // Fallback: If no direct match (e.g. filter failed), fetch recent sites and match in memory
+    let matchingSite = items[0];
     
-    // Return only the matching site wrapped in expected format
+    if (!matchingSite) {
+      console.log('[LiveSite] No direct match via filter, trying memory-match fallback...');
+      const fallbackResult = await graphqlClient.query({
+        query: GET_VIBE_SITES_QUERY,
+        variables: {
+          input: { sort: JSON.stringify({ CreatedDate: -1 }), pageNo: 1, pageSize: 100 },
+        },
+      });
+      const fallbackItems = (fallbackResult as any)?.getVibeSites?.items || (fallbackResult as any)?.VibeSites?.items || [];
+      matchingSite = fallbackItems.find((s: any) => {
+        const slug = Array.isArray(s.siteSlug) ? s.siteSlug[0] : s.siteSlug;
+        return slug === siteSlug;
+      });
+    }
+
     if (matchingSite) {
-      return {
-        getVibeSites: {
-          items: [matchingSite],
-          totalCount: 1,
-          hasNextPage: false,
-          hasPreviousPage: false,
-          pageSize: 1,
-          pageNo: 1,
-          totalPages: 1
-        }
-      };
+      const isPublished = (Array.isArray(matchingSite.isPublished) ? matchingSite.isPublished[0] : matchingSite.isPublished) === true;
+      if (isPublished) {
+        return {
+          getVibeSites: {
+            items: [matchingSite],
+            totalCount: 1,
+          }
+        };
+      }
     }
     
-    // Return empty result if no match
-    return {
-      getVibeSites: {
-        items: [],
-        totalCount: 0,
-        hasNextPage: false,
-        hasPreviousPage: false,
-        pageSize: 0,
-        pageNo: 1,
-        totalPages: 0
-      }
-    };
+    return { getVibeSites: { items: [], totalCount: 0 } };
   } catch (error) {
     console.error('[LiveSite] Query error:', error);
     throw error;
@@ -206,8 +198,8 @@ export const getPagesBySiteId = async (siteId: string) => {
       query: GET_VIBE_PAGES_QUERY,
       variables: {
         input: {
-          filter: "{\"siteId\":{\"$eq\":\"" + siteId + "\"}}",
-          sort: "{\"sortOrder\":1}",
+          filter: JSON.stringify({ siteId: [siteId] }), // Consistent array-wrapped filter
+          sort: JSON.stringify({ sortOrder: 1 }),
           pageNo: 1,
           pageSize: 50,
         },

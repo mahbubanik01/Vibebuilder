@@ -1,6 +1,7 @@
 import { useGlobalQuery } from '@/state/query-client/hooks';
 import { getSiteBySlug, getPagesBySiteId } from '../services/site-builder.service';
 import type { Page, SiteData } from '../types/site-builder.types';
+import { normalizeScalar, safeJsonParse } from '@/lib/data-utils';
 
 export const useLiveSite = (siteSlug: string, pageSlug: string) => {
   console.log('[LiveSiteHook] Running for slug:', siteSlug);
@@ -24,14 +25,13 @@ export const useLiveSite = (siteSlug: string, pageSlug: string) => {
                     
   const site = siteRawItem ? {
     ...siteRawItem,
-    siteName: Array.isArray(siteRawItem.siteName) ? siteRawItem.siteName[0] : siteRawItem.siteName,
-    siteSlug: Array.isArray(siteRawItem.siteSlug) ? siteRawItem.siteSlug[0] : siteRawItem.siteSlug,
-    isPublished: (Array.isArray(siteRawItem.isPublished) ? siteRawItem.isPublished[0] : siteRawItem.isPublished) === true
+    siteName: normalizeScalar(siteRawItem.siteName),
+    siteSlug: normalizeScalar(siteRawItem.siteSlug),
+    isPublished: normalizeScalar(siteRawItem.isPublished) === true
   } : null;
 
   console.log('[LiveSiteHook] Extracted site:', site);
-  console.log('[LiveSiteHook] Final extracted site properties:', Object.keys(site || {}));
-  const siteId = Array.isArray(site?.ItemId) ? site?.ItemId[0] : site?.ItemId;
+  const siteId = normalizeScalar(site?.ItemId);
 
   const pagesQuery = useGlobalQuery({
     queryKey: ['live-pages', siteId],
@@ -50,9 +50,9 @@ export const useLiveSite = (siteSlug: string, pageSlug: string) => {
   
   const pages: Page[] = rawPages.map(p => ({
     ...p,
-    name: Array.isArray(p.name) ? p.name[0] : p.name,
-    slug: Array.isArray(p.slug) ? p.slug[0] : p.slug,
-    sections: typeof p.sections === 'string' ? JSON.parse(p.sections || '[]') : (p.sections || [])
+    name: normalizeScalar(p.name),
+    slug: normalizeScalar(p.slug),
+    sections: safeJsonParse(normalizeScalar(p.sections), [])
   }));
 
   console.log('[LiveSiteHook] Extracted pages count:', pages.length);
@@ -60,11 +60,11 @@ export const useLiveSite = (siteSlug: string, pageSlug: string) => {
 
   const siteData: SiteData | null = site
     ? {
-        ownerId: site.ownerId || '',
-        siteId: site.ItemId,
+        ownerId: normalizeScalar(site.ownerId) || '',
+        siteId: normalizeScalar(site.ItemId),
         metadata: {
-          title: site.siteName,
-          ...(typeof site.metadata === 'string' ? JSON.parse(site.metadata || '{}') : (site.metadata || {})),
+          title: normalizeScalar(site.siteName),
+          ...(typeof site.metadata === 'string' ? safeJsonParse(site.metadata, {}) : (site.metadata || {})),
         },
         pages: pages,
       }
