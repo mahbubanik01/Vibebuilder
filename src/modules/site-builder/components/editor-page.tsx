@@ -62,11 +62,11 @@ export function EditorPage() {
     filter: siteId ? JSON.stringify({ ItemId: siteId }) : undefined,
   });
 
-  // Fetch Pages Data
+  // Fetch Pages Data - siteId is stored as array in DB
   const { data: pagesDataRes, isLoading: isPagesLoading } = useGetPages({
     pageNo: 1,
     pageSize: 50,
-    filter: siteId ? JSON.stringify({ siteId: siteId }) : undefined,
+    filter: siteId ? JSON.stringify({ siteId: [siteId] }) : undefined,
   });
 
   const { mutateAsync: createPage } = useCreatePage();
@@ -219,11 +219,11 @@ const handleManualSave = async () => {
     }
     
 try {
-      // Use ItemId in filter - more precise
+      // Use ItemId in filter - more precise, also need siteId as array
       const pageItemId = activePage?.ItemId || activePage?.itemId;
       const filter = pageItemId 
         ? JSON.stringify({ ItemId: pageItemId })
-        : JSON.stringify({ slug: activePage.slug, siteId: siteId });
+        : JSON.stringify({ slug: activePage.slug, siteId: [siteId] });
       console.log('[SAVE] Using filter:', filter);
       console.log('[SAVE] Sections data:', activePage.sections);
       console.log('[SAVE] Sections JSON:', JSON.stringify(activePage.sections).substring(0,100));
