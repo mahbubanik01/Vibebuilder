@@ -21,11 +21,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local env files
+.env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Secrets - DO NOT COMMIT
-client_secret*.json
-.env*
+# Allow committing environment-specific configs
+!.env.dev
+!.env.stg
+!.env.prod
+!.env.uat
+!.env.test
+!.env.iat
+!.env.preprod
+!.env.prodshadow
 !.env.example
 
 # IDE - VSCode
