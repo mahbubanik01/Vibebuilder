@@ -1,0 +1,6 @@
+[submodule "blocks-ai-skills"]
+	path = blocks-ai-skills
+	url = https://github.com/rezwanx/blocks-ai-skills.git
+[submodule "blocks-skills"]
+	path = blocks-skills
+	url = https://github.com/SELISEdigitalplatforms/blocks-skills.git
