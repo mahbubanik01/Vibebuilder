@@ -82,7 +82,7 @@ export const SigninEmail = () => {
 
       login(res.access_token ?? '', res.refresh_token ?? '');
       setTokens({ accessToken: res.access_token ?? '', refreshToken: res.refresh_token ?? '' });
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       // Increment failed attempts
       failedAttemptsRef.current += 1;
@@ -100,12 +100,18 @@ export const SigninEmail = () => {
   const isCaptchaRequired = showCaptcha && captchaEnabled;
 
   return (
-    <div className="w-full">
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight text-white">{t('WELCOME_BACK', 'Welcome Back')}</h1>
+        <p className="text-[#9DA7B3]">{t('SIGNIN_SUBTITLE', 'Sign in to your VibeBuilder account.')}</p>
+      </div>
+
       <ErrorAlert
         isError={isError}
         title={t('INVALID_CREDENTIALS')}
         message={t('EMAIL_PASSWORD_NOT_VALID')}
       />
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-6">
           <div className="space-y-5">
@@ -114,15 +120,15 @@ export const SigninEmail = () => {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">{t('EMAIL')}</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase tracking-widest text-[#9DA7B3]">{t('EMAIL')}</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder={t('ENTER_YOUR_EMAIL')} 
                       {...field} 
-                      className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                      className="h-12 bg-[#161B22] border-[#30363D] text-[#E6EDF3] focus:border-[#2F81F7] focus:ring-[#2F81F7]/20 transition-all rounded-xl"
                     />
                   </FormControl>
-                  <FormMessage className="text-[11px] font-medium" />
+                  <FormMessage className="text-[11px] font-medium text-red-400" />
                 </FormItem>
               )}
             />
@@ -132,10 +138,10 @@ export const SigninEmail = () => {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex justify-between items-center">
-                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground/80">{t('PASSWORD')}</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest text-[#9DA7B3]">{t('PASSWORD')}</FormLabel>
                     <Link
-                      to="/forgot-password"
-                      className="text-[11px] font-bold text-primary/70 hover:text-primary transition-colors uppercase tracking-wider"
+                      to="/auth/forgot-password"
+                      className="text-xs font-bold text-[#2F81F7] hover:underline transition-colors"
                     >
                       {t('FORGOT_PASSWORD')}
                     </Link>
@@ -144,24 +150,24 @@ export const SigninEmail = () => {
                     <PasswordInput 
                       placeholder={t('ENTER_YOUR_PASSWORD')} 
                       {...field} 
-                      className="h-12 bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                      className="h-12 bg-[#161B22] border-[#30363D] text-[#E6EDF3] focus:border-[#2F81F7] focus:ring-[#2F81F7]/20 transition-all rounded-xl"
                     />
                   </FormControl>
-                  <FormMessage className="text-[11px] font-medium" />
+                  <FormMessage className="text-[11px] font-medium text-red-400" />
                 </FormItem>
               )}
             />
           </div>
 
           {isCaptchaRequired && (
-            <div className="my-6 p-4 rounded-xl bg-muted/20 border border-border/40">
-              <Captcha {...captcha} theme={theme === 'dark' ? 'dark' : 'light'} size="normal" />
+            <div className="p-4 rounded-xl bg-[#161B22] border border-[#30363D]">
+              <Captcha {...captcha} theme="dark" size="normal" />
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full h-12 text-[15px] font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full h-12 bg-[#2F81F7] hover:bg-[#1F6FEB] text-white font-bold rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all disabled:opacity-50"
             disabled={isPending || (isCaptchaRequired && !captchaCode)}
           >
             {isPending ? (
@@ -173,6 +179,15 @@ export const SigninEmail = () => {
           </Button>
         </form>
       </Form>
+
+      <div className="text-center">
+        <p className="text-sm text-[#9DA7B3]">
+          {t('DONT_HAVE_ACCOUNT', "Don't have an account?")}{' '}
+          <Link to="/auth/signup" className="text-[#2F81F7] font-bold hover:underline">
+            {t('GET_STARTED', 'Get Started')}
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };

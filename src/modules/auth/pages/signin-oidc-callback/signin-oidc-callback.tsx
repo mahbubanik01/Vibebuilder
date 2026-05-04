@@ -29,9 +29,9 @@ export const SigninOidcCallBackPage = () => {
 
           login(res.access_token ?? '', res.refresh_token ?? '');
           setTokens({ accessToken: res.access_token ?? '', refreshToken: res.refresh_token ?? '' });
-          navigate('/', { replace: true });
+          navigate('/dashboard', { replace: true });
         } catch (error) {
-          navigate('/login', { replace: true });
+          navigate('/auth/signin', { replace: true });
         } finally {
           isExchangingRef.current = false;
         }

@@ -68,7 +68,7 @@ function HeroRenderer({ content }: { content: Record<string, string> }) {
 
 function TextRenderer({ content }: { content: Record<string, string> }) {
   return (
-    <section className="py-32 px-6 max-w-4xl mx-auto animate-in fade-in duration-700">
+    <section className="py-20 px-8 max-w-4xl mx-auto animate-in fade-in duration-700">
       <div className="prose prose-slate lg:prose-xl max-w-none">
         <p className="text-[21px] leading-[1.7] text-[#1e293b] whitespace-pre-wrap font-medium opacity-90 tracking-tight">
           {content.body || 'Text content will appear here.'}
@@ -248,12 +248,12 @@ function FeaturesRenderer({ content }: { content: Record<string, string> }) {
   }
 
   return (
-    <section className="py-40 px-6 max-w-7xl mx-auto">
-      <div className="text-center mb-32 space-y-4">
+    <section className="py-28 px-6 max-w-7xl mx-auto">
+      <div className="text-center mb-20 space-y-4">
         <h2 className="text-6xl md:text-7xl font-black tracking-tighter text-[#1e293b]">{content.title || 'Studio Features'}</h2>
         {content.subtitle && <p className="text-xl text-[#64748b] font-medium">{content.subtitle}</p>}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
         {items.map((item: any, i: number) => (
           <div key={i} className="flex flex-col items-start group animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ transitionDelay: `${i * 150}ms` }}>
             <div className="w-16 h-16 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-center mb-10 group-hover:border-[#2F81F7] group-hover:bg-[#2F81F7]/5 group-hover:scale-110 transition-all duration-500 ease-out">
@@ -277,8 +277,8 @@ function TestimonialsRenderer({ content }: { content: Record<string, string> }) 
   }
 
   return (
-    <section className="py-32 px-6 max-w-7xl mx-auto">
-      <h2 className="text-4xl md:text-5xl font-bold text-center mb-24 tracking-tighter">{content.title || 'From the Community'}</h2>
+    <section className="py-24 px-6 max-w-7xl mx-auto">
+      <h2 className="text-4xl md:text-5xl font-bold text-center mb-20 tracking-tighter">{content.title || 'From the Community'}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-16">
         {items.map((item: any, i: number) => (
           <div key={i} className="flex flex-col">

@@ -29,7 +29,7 @@ export const SignupPage = () => {
             {t('ALREADY_HAVE_ACCOUNT')}
           </span>
           <Link
-            to={'/login'}
+            to={'/auth/signin'}
             className="text-sm font-bold text-primary hover:text-primary-600 hover:underline"
           >
             {t('LOG_IN')}

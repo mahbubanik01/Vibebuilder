@@ -45,7 +45,7 @@ export function LiveRendererPage() {
   const { siteSlug, pageSlug = 'home' } = useParams<{ siteSlug: string; pageSlug?: string }>();
   const [errorInfo, setErrorInfo] = useState<string>('');
 
-  const { siteQuery, pagesQuery, site, pages, activePage, error } = useLiveSite(siteSlug || '', pageSlug);
+  const { siteQuery, pagesQuery, site, pages, activePage, error, hasCache } = useLiveSite(siteSlug || '', pageSlug);
 
   useEffect(() => {
     if (error) {
@@ -80,8 +80,9 @@ export function LiveRendererPage() {
     return <ErrorState title="404" message="No site specified" />;
   }
 
-  const isLoading = siteQuery.isLoading || pagesQuery.isLoading;
-  const isError = siteQuery.isError || pagesQuery.isError;
+  // Only show loading if we have NO cache (cache provides instant render)
+  const isLoading = !hasCache && (siteQuery.isLoading || pagesQuery.isLoading);
+  const isError = !hasCache && (siteQuery.isError || pagesQuery.isError);
   const isSchemaError = errorInfo.includes('does not exist') || errorInfo.includes('Cannot read');
 
   if (isLoading) return <LoadingState />;
@@ -98,16 +99,12 @@ export function LiveRendererPage() {
     );
   }
 
-  if (!site) return <ErrorState title="Site Not Found" message={`The site "${siteSlug}" doesn't exist or is not published.`} />;
-
-  if (normalizeScalar(site?.isPublished) !== true) {
-    return <ErrorState title="Site Not Published" message="This site exists but is not yet published." />;
-  }
+  if (!site) return <ErrorState title="Site Not Found" message={`The site "${siteSlug}" doesn't exist. Make sure you've saved and published it from the editor.`} />;
 
   if (!activePage) return <ErrorState title="Page Not Found" message={`The page "${pageSlug}" doesn't exist.`} />;
 
   return (
-    <div className="min-h-screen bg-[#0D1117] flex flex-col selection:bg-[#2F81F7]/30">
+    <div className="flex-1 min-h-screen w-full bg-white flex flex-col overflow-x-hidden selection:bg-[#2F81F7]/30">
       <nav className="bg-[#0D1117]/80 backdrop-blur-xl border-b border-[#30363D]/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-8">
           <div className="flex justify-between h-20 items-center">
@@ -159,7 +156,7 @@ export function LiveRendererPage() {
         )}
       </main>
 
-      <footer className="bg-[#0D1117] border-t border-[#30363D] py-20 mt-20">
+      <footer className="bg-[#0D1117] border-t border-[#30363D] py-16">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
           <Link to="/" className="group flex flex-col items-center gap-4 no-underline">
             <div className="flex items-center gap-3 px-5 py-2.5 bg-[#161B22] rounded-full border border-[#30363D] group-hover:border-[#2F81F7] transition-all duration-300">

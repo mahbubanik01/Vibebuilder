@@ -27,6 +27,7 @@ import { SidebarProvider } from '@/components/ui-kit/sidebar';
 import { Toaster } from '@/components/ui-kit/toaster';
 import { useLanguageContext } from '@/i18n/language-context';
 import { LoadingOverlay } from '@/components/core';
+import { LandingPage } from '@/modules/landing-page';
 
 export const AppRoutes = () => {
   const { isLoading } = useLanguageContext();
@@ -40,15 +41,14 @@ export const AppRoutes = () => {
         <ThemeProvider>
           <SidebarProvider>
             <Routes>
+              {/* Home / Landing Page */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
               {AuthRoutes}
 
               {/* Public Live Site Routes */}
               <Route path="/live/:siteSlug" element={<LiveRendererPage />} />
               <Route path="/live/:siteSlug/:pageSlug" element={<LiveRendererPage />} />
-
-              {/* Standalone Site Builder (no sidebar/guard) */}
-              <Route path="/site-builder" element={<SiteListPage />} />
-              <Route path="/site-builder/:siteId/:pageId" element={<SiteBuilderPage />} />
 
               <Route
                 element={
@@ -111,12 +111,13 @@ export const AppRoutes = () => {
                 <Route path="/404" element={<NotFoundPage />} />
               </Route>
 
-              {/* Standalone Site Builder Routes (No Dashboard Shell) */}
-              <Route path="/site-builder" element={<SiteListPage />} />
-              <Route path="/site-builder/:siteId/:pageId" element={<SiteBuilderPage />} />
+
+
+              {/* Protected Standalone Site Builder Routes */}
+              <Route path="/site-builder" element={<Guard><SiteListPage /></Guard>} />
+              <Route path="/site-builder/:siteId/:pageId" element={<Guard><SiteBuilderPage /></Guard>} />
 
               {/* Redirects */}
-              <Route path="/" element={<Navigate to="/dashboard" />} />
               <Route path="/file-manager" element={<Navigate to="/file-manager/my-files" />} />
               <Route path="/my-files" element={<Navigate to="/file-manager/my-files" />} />
               <Route path="/shared-files" element={<Navigate to="/file-manager/shared-files" />} />

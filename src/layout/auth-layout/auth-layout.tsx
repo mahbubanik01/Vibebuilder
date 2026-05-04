@@ -1,34 +1,15 @@
-import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
-import bgAuthLight from '@/assets/images/bg_auth_light.svg';
-import bgAuthDark from '@/assets/images/bg_auth_dark.svg';
+import { Outlet } from 'react-router-dom';
+import { AlertTriangle, Rocket } from 'lucide-react';
 import { useGetLoginOptions } from '@/modules/auth/hooks/use-auth';
 import { useAuthState } from '@/state/client-middleware';
-import { useTheme } from '@/styles/theme/theme-provider';
 import { LanguageSelector, ThemeSwitcher } from '@/components/core';
+import { DottedSurface } from '@/components/ui-kit/dotted-surface';
 
 export const AuthLayout = () => {
   const { isLoading, error: loginOptionsError } = useGetLoginOptions();
-  const navigate = useNavigate();
-  const { isMounted, isAuthenticated } = useAuthState();
-  const { theme } = useTheme();
-
-  useEffect(() => {
-    // Don't redirect if we're on the MFA verification page
-    if (isAuthenticated && !window.location.pathname.includes('/verify-mfa')) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
+  const { isMounted } = useAuthState();
 
   if (!isMounted) return null;
-
-  const getBackgroundImage = () => {
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? bgAuthDark : bgAuthLight;
-    }
-    return theme === 'dark' ? bgAuthDark : bgAuthLight;
-  };
 
   const is404Error = (error: any) => {
     return (
@@ -144,44 +125,63 @@ export const AuthLayout = () => {
   if (isLoading) return null;
 
   return (
-    <div className="flex w-full flex-col h-screen bg-background overflow-hidden">
+    <div className="flex w-full flex-col h-screen bg-[#0D1117] overflow-hidden selection:bg-[#2F81F7]/30">
       <div className="flex w-full min-h-screen relative">
-        {/* Left Side: Premium Background Image with Overlay */}
-        <div className="hidden md:block w-[40%] relative overflow-hidden">
-          <img
-            src={getBackgroundImage()}
-            alt="bg auth"
-            className="w-full h-full object-cover transition-transform duration-[10000ms] hover:scale-110"
-            key={theme ?? 'default'}
-          />
-          <div className="absolute inset-0 bg-gradient-to-tr from-primary/40 to-transparent mix-blend-multiply" />
-          <div className="absolute inset-0 bg-black/10" />
+        {/* Left Side: Premium Three.js Animation */}
+        <div className="hidden lg:flex w-[45%] relative flex-col items-center justify-center p-20 overflow-hidden border-r border-[#30363D]">
+          <DottedSurface className="opacity-50" />
           
-          {/* Subtle logo/branding on the image side */}
+          <div className="relative z-10 w-full">
+            <div className="flex items-center gap-3 mb-12">
+               <div className="w-12 h-12 rounded-xl bg-[#2F81F7] flex items-center justify-center shadow-2xl shadow-blue-500/20">
+                  <Rocket className="w-6 h-6 text-white" />
+               </div>
+               <h1 className="text-3xl font-bold tracking-tight text-[#E6EDF3]">VibeBuilder</h1>
+            </div>
+            
+            <h2 className="text-5xl font-bold tracking-tight text-white mb-6 leading-tight">
+              Designing the future <br /> of the web.
+            </h2>
+            <p className="text-xl text-[#9DA7B3] leading-relaxed max-w-md">
+              The high-fidelity visual engine for modern teams and creative designers.
+            </p>
+          </div>
+          
           <div className="absolute bottom-12 left-12 z-20">
-             <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
-                <p className="text-white text-sm font-medium tracking-wide">VibeBuilder v0.1</p>
+             <div className="p-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10">
+                <p className="text-[#9DA7B3] text-xs font-bold uppercase tracking-[0.2em]">Build with Precision • Vibe v0.1</p>
              </div>
           </div>
         </div>
 
-        {/* Right Side: Clean, Focused Login Area */}
-        <div className="flex items-center justify-center w-full px-6 sm:px-20 md:w-[60%] md:px-[10%] lg:px-[12%] 2xl:px-[15%] bg-background relative">
+        {/* Right Side: Clean Login Area */}
+        <div className="flex items-center justify-center w-full px-6 md:px-20 lg:w-[55%] lg:px-[10%] xl:px-[12%] bg-[#0D1117] relative">
           <div className="absolute top-8 right-8 z-50">
-            <div className="flex flex-row items-center gap-4 p-1 rounded-full bg-muted/40 backdrop-blur-sm border border-border/50">
+            <div className="flex flex-row items-center gap-4 p-1 rounded-full bg-[#161B22] border border-[#30363D] backdrop-blur-sm">
               <ThemeSwitcher />
-              <div className="w-px h-4 bg-border/50" />
+              <div className="w-px h-4 bg-[#30363D]" />
               <LanguageSelector />
             </div>
           </div>
           
-          <div className="w-full relative">
-            {/* Subtle background glow */}
-            <div className="absolute -top-[20%] -right-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute -bottom-[20%] -left-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-            
+          <div className="w-full max-w-md relative">
+            {/* Logo for mobile */}
+            <div className="lg:hidden flex items-center gap-2 mb-12">
+              <div className="w-8 h-8 rounded-lg bg-[#2F81F7] flex items-center justify-center">
+                <Rocket className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xl font-bold text-[#E6EDF3]">VibeBuilder</span>
+            </div>
+
             <div className="relative z-10">
               {renderAuthContent()}
+            </div>
+
+            <div className="mt-12 pt-12 border-t border-[#30363D] text-center">
+               <p className="text-[#9DA7B3] text-sm">
+                 Build. Ship. Vibe. <br />
+                 <span className="text-[10px] uppercase tracking-widest mt-2 block opacity-50">© 2024 VibeBuilder Engine</span>
+               </p>
             </div>
           </div>
         </div>

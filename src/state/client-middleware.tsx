@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useLayoutEffect, useState } from 'react';
+import { ReactNode, useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import { publicRoutes } from '@/constant/auth-public-routes';
+import { isJWTExpired } from '@/lib/utils/auth-helpers';
 
 /**
  * useAuthState Hook
@@ -30,20 +31,27 @@ interface AuthState {
 }
 
 export const useAuthState = () => {
-  const { isAuthenticated } = useAuthStore();
-  const [isAuth, setIsAuth] = useState<AuthState>({
-    isMounted: false,
-    isAuthenticated: false,
-  });
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const logout = useAuthStore((state) => state.logout);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsAuth({
-      isMounted: true,
-      isAuthenticated: isAuthenticated,
-    });
-  }, [isAuthenticated]);
+    setIsMounted(true);
+  }, []);
 
-  return isAuth;
+  const performLogout = useCallback(() => {
+    if (logout) logout();
+  }, [logout]);
+
+  // Expiry guard on mount and when token changes
+  useEffect(() => {
+    if (isMounted && accessToken && isJWTExpired(accessToken)) {
+      performLogout();
+    }
+  }, [isMounted, accessToken, performLogout]);
+
+  return { isMounted, isAuthenticated };
 };
 
 /**
@@ -77,7 +85,10 @@ export const ClientMiddleware: React.FC<ClientMiddlewareProps> = ({ children }) 
   const location = useLocation();
   const currentPath = location.pathname;
   const { isMounted, isAuthenticated } = useAuthState();
-  const isPublicRoute = publicRoutes.includes(currentPath);
+  const isLiveRoute = currentPath.startsWith('/live/');
+  const isPublicRoute = publicRoutes.includes(currentPath) || isLiveRoute;
+  const lastNavTime = useRef<number>(0);
+  const NAV_THROTTLE_MS = 600;
 
   // Check if we're processing an SSO callback (has code and state parameters)
   const urlParams = new URLSearchParams(location.search);
@@ -88,8 +99,13 @@ export const ClientMiddleware: React.FC<ClientMiddlewareProps> = ({ children }) 
       return;
     }
 
+    // Throttle navigation to avoid navigation storms that can hang the browser
+    const now = Date.now();
+    if (now - lastNavTime.current < NAV_THROTTLE_MS) return;
+
     if (isMounted && !isAuthenticated && !isPublicRoute) {
-      navigate('/login');
+      navigate('/auth/signin');
+      lastNavTime.current = now;
     }
   }, [isAuthenticated, isMounted, isPublicRoute, isSSOCallback, navigate, currentPath]);
 

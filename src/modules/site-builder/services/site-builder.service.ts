@@ -11,6 +11,7 @@ import {
   UPDATE_VIBE_PAGE_MUTATION,
   DELETE_VIBE_PAGE_MUTATION,
 } from '../graphql/mutations';
+import { normalizeScalar } from '@/lib/data-utils';
 
 // --- VibeSite Services ---
 
@@ -44,18 +45,10 @@ export const createSite = async (params: { input: any }) => {
 };
 
 export const updateSite = async (params: { filter: string; input: any }) => {
-  console.log('[updateSite] Calling mutation with:', params);
-  try {
-    const result = await graphqlClient.mutate({
-      query: UPDATE_VIBE_SITE_MUTATION,
-      variables: params,
-    });
-    console.log('[updateSite] Result:', result);
-    return result;
-  } catch (err: any) {
-    console.error('[updateSite] Error:', err.message || err);
-    throw err;
-  }
+  return graphqlClient.mutate({
+    query: UPDATE_VIBE_SITE_MUTATION,
+    variables: params,
+  });
 };
 
 export const deleteSite = async (filter: string, input: { isHardDelete: boolean }) => {
@@ -92,33 +85,17 @@ export const getPages = async (context: {
 };
 
 export const createPage = async (params: { input: any }) => {
-  console.log('[createPage] Calling mutation with:', params);
-  try {
-    const result = await graphqlClient.mutate({
-      query: INSERT_VIBE_PAGE_MUTATION,
-      variables: params,
-    });
-    console.log('[createPage] Result:', result);
-    return result;
-  } catch (err: any) {
-    console.error('[createPage] Error:', err.message || err);
-    throw err;
-  }
+  return graphqlClient.mutate({
+    query: INSERT_VIBE_PAGE_MUTATION,
+    variables: params,
+  });
 };
 
 export const updatePage = async (params: { filter: string; input: any }) => {
-  console.log('[updatePage] Calling mutation with:', params);
-  try {
-    const result = await graphqlClient.mutate({
-      query: UPDATE_VIBE_PAGE_MUTATION,
-      variables: params,
-    });
-    console.log('[updatePage] Result:', result);
-    return result;
-  } catch (err: any) {
-    console.error('[updatePage] Error:', err.message || err);
-    throw err;
-  }
+  return graphqlClient.mutate({
+    query: UPDATE_VIBE_PAGE_MUTATION,
+    variables: params,
+  });
 };
 
 export const deletePage = async (filter: string, input: { isHardDelete: boolean }) => {
@@ -131,33 +108,42 @@ export const deletePage = async (filter: string, input: { isHardDelete: boolean 
   });
 };
 
-// --- Live Site Services ---
+// --- Live Site Services (Public - No Auth Required) ---
 
 export const getSiteBySlug = async (siteSlug: string) => {
-  console.log('[LiveSite] Fetching site with slug:', siteSlug);
-  
   try {
-    // Attempt to use a filter first for efficiency
     const result = await graphqlClient.query({
       query: GET_VIBE_SITES_QUERY,
       variables: {
         input: {
-          filter: JSON.stringify({ siteSlug: [siteSlug] }), // Match the array-wrapped storage pattern
+          filter: JSON.stringify({ siteSlug: { $eq: siteSlug } }),
           pageNo: 1,
           pageSize: 1,
         },
       },
     });
     
-    console.log('[LiveSite] Query result:', result);
-    
     const items = (result as any)?.getVibeSites?.items || (result as any)?.VibeSites?.items || [];
     
-    // Fallback: If no direct match (e.g. filter failed), fetch recent sites and match in memory
+    // Fallback: Try matching by ItemId (if slug is actually the UUID)
     let matchingSite = items[0];
-    
     if (!matchingSite) {
-      console.log('[LiveSite] No direct match via filter, trying memory-match fallback...');
+      const idResult = await graphqlClient.query({
+        query: GET_VIBE_SITES_QUERY,
+        variables: {
+          input: {
+            filter: JSON.stringify({ ItemId: { $eq: siteSlug } }),
+            pageNo: 1,
+            pageSize: 1,
+          },
+        },
+      });
+      const idItems = (idResult as any)?.getVibeSites?.items || (idResult as any)?.VibeSites?.items || [];
+      matchingSite = idItems[0];
+    }
+    
+    // Fallback: Memory-match from recent sites
+    if (!matchingSite) {
       const fallbackResult = await graphqlClient.query({
         query: GET_VIBE_SITES_QUERY,
         variables: {
@@ -166,50 +152,69 @@ export const getSiteBySlug = async (siteSlug: string) => {
       });
       const fallbackItems = (fallbackResult as any)?.getVibeSites?.items || (fallbackResult as any)?.VibeSites?.items || [];
       matchingSite = fallbackItems.find((s: any) => {
-        const slug = Array.isArray(s.siteSlug) ? s.siteSlug[0] : s.siteSlug;
-        return slug === siteSlug;
+        const slug = normalizeScalar(s.siteSlug);
+        const id = normalizeScalar(s.ItemId);
+        return slug === siteSlug || id === siteSlug;
       });
     }
 
     if (matchingSite) {
-      const isPublished = (Array.isArray(matchingSite.isPublished) ? matchingSite.isPublished[0] : matchingSite.isPublished) === true;
-      if (isPublished) {
-        return {
-          getVibeSites: {
-            items: [matchingSite],
-            totalCount: 1,
-          }
-        };
-      }
+      return {
+        getVibeSites: {
+          items: [matchingSite],
+          totalCount: 1,
+        }
+      };
     }
     
     return { getVibeSites: { items: [], totalCount: 0 } };
-  } catch (error) {
-    console.error('[LiveSite] Query error:', error);
-    throw error;
+  } catch (err: any) {
+    throw err;
   }
 };
 
 export const getPagesBySiteId = async (siteId: string) => {
-  console.log('[LiveSite] Fetching pages for siteId:', siteId);
-  
   try {
     const result = await graphqlClient.query({
       query: GET_VIBE_PAGES_QUERY,
       variables: {
         input: {
-          filter: JSON.stringify({ siteId: [siteId] }), // Consistent array-wrapped filter
+          filter: JSON.stringify({ siteId: { $eq: siteId } }),
           sort: JSON.stringify({ sortOrder: 1 }),
           pageNo: 1,
           pageSize: 50,
         },
       },
     });
+
+    const items = (result as any)?.getVibePages?.items || (result as any)?.VibePages?.items || [];
     
-    console.log('[LiveSite] Pages result:', result);
+    // Fallback: If DB strict match failed (e.g. array vs scalar issue), fetch recent pages and filter
+    if (items.length === 0 && siteId && !siteId.startsWith('local-')) {
+      const fallbackResult = await graphqlClient.query({
+        query: GET_VIBE_PAGES_QUERY,
+        variables: {
+          input: { sort: JSON.stringify({ CreatedDate: -1 }), pageNo: 1, pageSize: 200 },
+        },
+      });
+      const fallbackItems = (fallbackResult as any)?.getVibePages?.items || (fallbackResult as any)?.VibePages?.items || [];
+      const matchingPages = fallbackItems.filter((p: any) => {
+        const id = normalizeScalar(p.siteId);
+        return id === siteId;
+      });
+      
+      if (matchingPages.length > 0) {
+        return {
+          getVibePages: {
+            items: matchingPages,
+            totalCount: matchingPages.length,
+          }
+        };
+      }
+    }
+    
     return result;
   } catch (error) {
-    console.error('[LiveSite] Pages query error:', error);
     throw error;
   }
 };

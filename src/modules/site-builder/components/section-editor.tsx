@@ -97,6 +97,37 @@ function HeroEditor({
           )}
         </div>
       </div>
+
+      <div className="space-y-4 pt-6 border-t border-[#30363D]">
+        <h5 className="text-[11px] font-bold text-[#E6EDF3] uppercase tracking-wider mb-3">Call to Action</h5>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-[12px] text-[#9DA7B3] mb-1.5 block font-medium">Button Text</Label>
+            <Input
+              value={content.ctaText ?? ''}
+              onChange={(e) => onUpdate({ ctaText: e.target.value })}
+              placeholder="Get Started"
+              className="bg-[#0D1117] border-[#30363D] text-[#E6EDF3] focus:border-[#2F81F7] transition-all rounded-md h-10"
+            />
+          </div>
+          <div>
+            <Label className="text-[12px] text-[#9DA7B3] mb-1.5 block font-medium">Button URL</Label>
+            <Input
+              value={content.ctaUrl ?? ''}
+              onChange={(e) => onUpdate({ ctaUrl: e.target.value })}
+              placeholder="https://..."
+              className="bg-[#0D1117] border-[#30363D] text-[#E6EDF3] focus:border-[#2F81F7] transition-all rounded-md h-10"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-2">
+          <Label className="text-[12px] text-[#9DA7B3] block font-medium">Show Secondary Button</Label>
+          <Switch
+            checked={content.secondaryCta === 'true'}
+            onCheckedChange={(checked) => onUpdate({ secondaryCta: checked.toString() })}
+          />
+        </div>
+      </div>
     </div>
   );
 }

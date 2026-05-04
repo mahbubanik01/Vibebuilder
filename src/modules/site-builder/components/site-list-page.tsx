@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Layout, Globe, MoreVertical, Trash2, Edit3, ExternalLink, Rocket } from 'lucide-react';
 import { useGetSites, useCreateSite, useDeleteSite } from '../hooks/use-sites';
 import { useAuthStore } from '@/state/store/auth';
+import { decodeJWT } from '@/lib/utils/decode-jwt-utils';
 import { Button } from '@/components/ui-kit/button';
 import {
   DropdownMenu,
@@ -23,8 +24,9 @@ import { Label } from '@/components/ui-kit/label';
 
 export function SiteListPage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const ownerId = (user as any)?.id || 'anonymous';
+  const { user, accessToken } = useAuthStore();
+  const decoded = accessToken ? decodeJWT(accessToken) : null;
+  const ownerId = (user as any)?.itemId || (user as any)?.id || (decoded as any)?.sub || (decoded as any)?.userId || 'anonymous';
 
   // State
   const [pageNo] = useState(1);
@@ -120,7 +122,7 @@ export function SiteListPage() {
       return;
     }
     
-    await deleteSite({ filter: JSON.stringify({ ItemId: itemId }), input: { isHardDelete: false } });
+    await deleteSite({ filter: JSON.stringify({ ItemId: { $eq: itemId } }), input: { isHardDelete: false } });
   };
 
   return (
@@ -163,7 +165,7 @@ export function SiteListPage() {
         {isLoading && !isOfflineMode ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-64 bg-white rounded-2xl border animate-pulse" />
+              <div key={i} className="h-64 bg-[#161B22] rounded-lg border border-[#30363D] animate-pulse" />
             ))}
           </div>
         ) : sites.length === 0 ? (
@@ -191,13 +193,26 @@ export function SiteListPage() {
                 className="group relative bg-[#161B22] rounded-lg border border-[#30363D] hover:border-[#484f58] transition-all duration-200 flex flex-col overflow-hidden shadow-sm"
               >
                 <div 
-                  className="aspect-[16/10] bg-[#0D1117] flex items-center justify-center relative cursor-pointer overflow-hidden border-b border-[#30363D]"
+                  className="aspect-[16/10] relative cursor-pointer overflow-hidden border-b border-[#30363D]"
                   onClick={() => navigate(`/site-builder/${site.ItemId}/home`)}
+                  style={{ background: `linear-gradient(135deg, #0D1117 0%, #161B22 40%, #1a2332 60%, #0D1117 100%)` }}
                 >
-                  <Globe className="w-10 h-10 text-[#30363D] group-hover:text-[#2F81F7] group-hover:scale-110 transition-all duration-500" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  {/* Grid pattern overlay */}
+                  <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#E6EDF3 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                  {/* Accent glow */}
+                  <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-[#2F81F7]/15 rounded-full blur-2xl group-hover:bg-[#2F81F7]/30 transition-all duration-700" />
+                  {/* Site initial badge */}
+                  <div className="absolute top-4 left-4 w-10 h-10 rounded-lg bg-[#2F81F7]/10 border border-[#2F81F7]/20 flex items-center justify-center">
+                    <span className="text-[#2F81F7] font-bold text-lg">{(site.siteName || 'S')[0].toUpperCase()}</span>
+                  </div>
+                  {/* Site name preview */}
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="text-[11px] text-[#9DA7B3] font-medium truncate">{site.siteSlug || 'untitled'}</div>
+                  </div>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#0D1117]/60 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
                     <Button className="h-9 px-6 rounded-md font-semibold bg-[#2F81F7] hover:bg-[#1F6FEB] text-white shadow-xl border-none">
-                      Edit
+                      Open Editor
                     </Button>
                   </div>
                 </div>

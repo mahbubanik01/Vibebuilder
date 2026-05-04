@@ -14,18 +14,18 @@ import { SsoSignupPage } from '@/modules/auth/pages/signup-sso';
 import { SsoActivationPage } from '@/modules/auth/pages/sso-activation';
 
 export const AuthRoutes = (
-  <Route element={<AuthLayout />}>
-    <Route path="/login" element={<SigninPage />} />
-    <Route path="/oidc" element={<SigninOidcCallBackPage />} />
-    <Route path="/signup" element={<SignupPage />} />
-    <Route path="/sso-signup" element={<SsoSignupPage />} />
-    <Route path="/sso/:provider/callback" element={<SsoActivationPage />} />
-    <Route path="/sent-email" element={<EmailSentPage />} />
-    <Route path="/activate" element={<AccountActivationPage />} />
-    <Route path="/resetpassword" element={<ResetPasswordPage />} />
-    <Route path="/success" element={<ActivationSuccessPage />} />
-    <Route path="/activate-failed" element={<VerificationFailed />} />
-    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-    <Route path="/verify-mfa" element={<VerifyOtpKeyPage />} />
+  <Route path="/auth" element={<AuthLayout />}>
+    <Route path="signin" element={<SigninPage />} />
+    <Route path="oidc" element={<SigninOidcCallBackPage />} />
+    <Route path="signup" element={<SignupPage />} />
+    <Route path="sso-signup" element={<SsoSignupPage />} />
+    <Route path="sso/:provider/callback" element={<SsoActivationPage />} />
+    <Route path="sent-email" element={<EmailSentPage />} />
+    <Route path="activate" element={<AccountActivationPage />} />
+    <Route path="resetpassword" element={<ResetPasswordPage />} />
+    <Route path="success" element={<ActivationSuccessPage />} />
+    <Route path="activate-failed" element={<VerificationFailed />} />
+    <Route path="forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="verify-mfa" element={<VerifyOtpKeyPage />} />
   </Route>
 );

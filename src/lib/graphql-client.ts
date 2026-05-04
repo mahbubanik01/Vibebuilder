@@ -45,6 +45,7 @@ interface GraphQLResponse<T = any> {
 interface GraphQLClient {
   query<T>(request: GraphQLRequest): Promise<T>;
   mutate<T>(request: GraphQLRequest): Promise<T>;
+  publicQuery<T>(request: GraphQLRequest): Promise<T>;
 }
 
 const projectKey = import.meta.env.VITE_X_BLOCKS_KEY || '';
@@ -64,9 +65,6 @@ export const graphqlClient: GraphQLClient = {
       variables: request.variables || {},
     };
 
-    console.log('[GraphQL Query]', request.query.substring(0, 100));
-    console.log('[GraphQL Variables]', JSON.stringify(request.variables));
-
     try {
       const response = await clients.post<GraphQLResponse<T>>(
         GRAPHQL_BASE_URL,
@@ -77,15 +75,12 @@ export const graphqlClient: GraphQLClient = {
         }
       );
 
-      console.log('[GraphQL Response]', response);
-
       if (response.errors && response.errors.length > 0) {
         throw new Error(response.errors[0].message);
       }
 
       return (response.data as T) ?? ({} as T);
     } catch (err: any) {
-      console.error('[GraphQL Error]', err.message || err);
       throw err;
     }
   },
@@ -96,9 +91,6 @@ export const graphqlClient: GraphQLClient = {
       variables: request.variables || {},
     };
 
-    console.log('[GraphQL Mutation]', request.query.substring(0, 100));
-    console.log('[GraphQL Variables]', JSON.stringify(request.variables));
-
     try {
       const response = await clients.post<GraphQLResponse<T>>(
         GRAPHQL_BASE_URL,
@@ -109,15 +101,45 @@ export const graphqlClient: GraphQLClient = {
         }
       );
 
-      console.log('[GraphQL Response]', response);
-
       if (response.errors && response.errors.length > 0) {
         throw new Error(response.errors[0].message);
       }
 
       return response.data as T;
     } catch (err: any) {
-      console.error('[GraphQL Error]', err.message || err);
+      throw err;
+    }
+  },
+
+  async publicQuery<T>(request: GraphQLRequest): Promise<T> {
+    const payload = {
+      query: request.query,
+      variables: request.variables || {},
+    };
+
+    try {
+      const response = await fetch(GRAPHQL_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-blocks-key': projectKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(JSON.stringify(errorBody));
+      }
+
+      const json = await response.json() as GraphQLResponse<T>;
+
+      if (json.errors && json.errors.length > 0) {
+        throw new Error(json.errors[0].message);
+      }
+
+      return (json.data as T) ?? ({} as T);
+    } catch (err: any) {
       throw err;
     }
   },

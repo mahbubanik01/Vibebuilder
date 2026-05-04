@@ -16,6 +16,7 @@ import { Rocket, Globe, ExternalLink, RefreshCcw, Settings, X, Monitor, Tablet, 
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/state/store/auth';
 import { normalizeScalar, safeJsonParse } from '@/lib/data-utils';
+import { decodeJWT } from '@/lib/utils/decode-jwt-utils';
 import {
   Dialog,
   DialogContent,
@@ -41,10 +42,12 @@ export function EditorPage() {
   const { siteId, pageId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuthStore();
-  const ownerId = (user as any)?.id || 'anonymous';
+  const { user, accessToken } = useAuthStore();
+  const decoded = accessToken ? decodeJWT(accessToken) : null;
+  const ownerId = (user as any)?.itemId || (user as any)?.id || (decoded as any)?.sub || (decoded as any)?.userId || 'anonymous';
   
   const isLocalSite = siteId?.startsWith('local-');
+
 
   // State
   const [activePage, setActivePage] = useState<Page | null>(null);
@@ -59,14 +62,14 @@ export function EditorPage() {
   const { data: siteDataRes, isLoading: isSiteLoading, refetch: refetchSite } = useGetSites({
     pageNo: 1,
     pageSize: 1,
-    filter: siteId ? JSON.stringify({ ItemId: [siteId] }) : undefined,
+    filter: siteId ? JSON.stringify({ ItemId: { $eq: siteId } }) : undefined,
   });
 
   // Fetch Pages Data - siteId is stored as array in DB
   const { data: pagesDataRes, isLoading: isPagesLoading } = useGetPages({
     pageNo: 1,
     pageSize: 50,
-    filter: siteId ? JSON.stringify({ siteId: [siteId] }) : undefined,
+    filter: siteId ? JSON.stringify({ siteId: { $eq: siteId } }) : undefined,
   });
 
   const { mutateAsync: createPage } = useCreatePage();
@@ -87,10 +90,6 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
                    (pagesDataRes as any)?.data?.getVibePages?.items ||
                    [];
                     
-  console.log('[Editor] FULL API response:', pagesDataRes ? JSON.stringify(pagesDataRes).substring(0, 1000) : 'undefined');
-  console.log('[Editor] Data keys:', Object.keys(pagesDataRes || {}));
-  console.log('[Editor] getVibePages:', (pagesDataRes as any)?.getVibePages);
-                    
   const pages: Page[] = Array.isArray(rawPages) ? rawPages.map(p => ({
     ...p,
     ItemId: normalizeScalar(p.ItemId),
@@ -99,11 +98,47 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
     sections: safeJsonParse(normalizeScalar(p.sections), [])
   })) : [];
 
-  // Debug: Show first page's sections count
-  if (pages.length > 0) {
-    console.log('[Editor] First page sections:', pages[0].sections?.length);
-    console.log('[Editor] First page sections content:', JSON.stringify(pages[0].sections).substring(0, 200));
-  }
+  /**
+   * Write a complete site+pages snapshot to localStorage.
+   * This is the SOLE data source for the live site — no auth required.
+   * Keyed by siteSlug so the live site can find it from the URL.
+   */
+  const writePublishCache = useCallback((sectionsOverride?: any[]) => {
+    if (!site || !siteId) return;
+    const slug = normalizeScalar(site.siteSlug);
+    if (!slug) return;
+    
+    // Build the complete pages array with the latest sections
+    const currentPages = pages.map(p => {
+      if (p.slug === activePage?.slug && sectionsOverride) {
+        return { ...p, sections: sectionsOverride };
+      }
+      return p;
+    });
+    
+    const cacheData = {
+      site: {
+        ...site,
+        siteName: normalizeScalar(site.siteName),
+        siteSlug: slug,
+        ItemId: normalizeScalar(site.ItemId),
+        isPublished: true,
+      },
+      pages: currentPages.map(p => ({
+        ...p,
+        name: normalizeScalar(p.name) || p.name,
+        slug: normalizeScalar(p.slug) || p.slug,
+        sections: p.sections,
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    try {
+      localStorage.setItem(`vibe-publish-cache-${slug}`, JSON.stringify(cacheData));
+    } catch (e) {
+      console.warn('[PublishCache] Failed to write:', e);
+    }
+  }, [site, siteId, pages, activePage]);
   
   const {
     page: editorPage,
@@ -137,13 +172,12 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
 
       // Sync editor with the target page if it changed
       if (targetPage.slug !== activePage?.slug || targetPage.ItemId !== activePage?.ItemId) {
-        console.log('[EditorPage] Loading page:', targetPage.slug);
+
         setActivePage(targetPage);
         loadPage(targetPage);
       }
     } else if (siteId && !isLocalSite && !isCreatingPage.current) {
       // Create home page if site exists but has no pages
-      console.log('[EditorPage] No pages found, creating home...');
       isCreatingPage.current = true;
       const home = DEFAULT_SITE_DATA.pages[0];
       createPage({
@@ -172,18 +206,29 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
     const hasChanges = debouncedSections !== apiSections;
     
     if (hasSettled && hasChanges && debouncedEditorPage.slug === activePage.slug) {
-      console.log('[AUTO-SAVE] Saving changes for:', activePage.slug);
+
       setIsAutoSaving(true);
       
+      const pageItemId = activePage?.ItemId || activePage?.itemId;
+      const filter = pageItemId 
+        ? JSON.stringify({ ItemId: { $eq: pageItemId } })
+        : JSON.stringify({ slug: { $eq: activePage.slug }, siteId: { $eq: siteId } });
+      
       updatePage({
-        filter: JSON.stringify({ slug: [activePage.slug], siteId: [siteId] }),
+        filter: filter,
         input: {
           sections: [JSON.stringify(debouncedEditorPage.sections)],
         }
-      }).then(() => {
-        setActivePage(debouncedEditorPage);
+      }).then((res: any) => {
+        if (res?.updateVibePage?.acknowledged && res?.updateVibePage?.totalImpactedData === 0) {
+          console.error('[AUTO-SAVE] Filter mismatch! Filter:', filter);
+        } else {
+          setActivePage({ ...activePage, sections: debouncedEditorPage.sections });
+          // Write publish cache for the live site
+          writePublishCache(debouncedEditorPage.sections);
+        }
       }).catch(err => {
-        console.error('[AUTO-SAVE] Failed:', err);
+
       }).finally(() => {
         setIsAutoSaving(false);
       });
@@ -205,9 +250,9 @@ const rawPages = (pagesDataRes as any)?.getVibePages?.items ||
       const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
       const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
       if (idx !== -1) {
-        allPages[idx] = debouncedEditorPage;
+        allPages[idx] = { ...activePage, sections: debouncedEditorPage.sections };
         localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
-        setActivePage(debouncedEditorPage);
+        setActivePage({ ...activePage, sections: debouncedEditorPage.sections });
       }
     }
   }, [debouncedEditorPage, editorPage, activePage, isLocalSite, siteId]);
@@ -218,17 +263,19 @@ const handleManualSave = async () => {
       return;
     }
     
-    console.log('[SAVE] Manual save for:', activePage.slug, 'siteId:', siteId, 'isLocalSite:', isLocalSite);
+
     setIsAutoSaving(true);
 
     if (isLocalSite) {
       const allPages = JSON.parse(localStorage.getItem(`vibe-pages-${siteId}`) || '[]');
       const idx = allPages.findIndex((p: any) => p.slug === activePage.slug);
       if (idx !== -1) {
-        allPages[idx] = activePage;
+        allPages[idx] = { ...activePage, sections: editorPage.sections };
         localStorage.setItem(`vibe-pages-${siteId}`, JSON.stringify(allPages));
       }
       toast({ title: 'Saved Locally' });
+      setActivePage({ ...activePage, sections: editorPage.sections });
+      writePublishCache(editorPage.sections);
       setIsAutoSaving(false);
       return;
     }
@@ -237,21 +284,28 @@ try {
       // Use ItemId in filter - more precise, ItemId is usually a scalar in filters for mutations
       const pageItemId = activePage?.ItemId || activePage?.itemId;
       const filter = pageItemId 
-        ? JSON.stringify({ ItemId: pageItemId })
-        : JSON.stringify({ slug: [activePage.slug], siteId: [siteId] });
-      console.log('[SAVE] Using filter:', filter);
-      console.log('[SAVE] Sections data:', activePage.sections);
-       
+        ? JSON.stringify({ ItemId: { $eq: pageItemId } })
+        : JSON.stringify({ slug: { $eq: activePage.slug }, siteId: { $eq: siteId } });
+
       const res: any = await updatePage({
         filter: filter,
         input: {
-          sections: [JSON.stringify(activePage.sections)],
+          sections: [JSON.stringify(editorPage.sections)], // Use editorPage.sections!
         }
       });
       
-      console.log('[SAVE] API response:', res);
+      if (res?.updateVibePage?.acknowledged && res?.updateVibePage?.totalImpactedData === 0) {
+         toast({ variant: 'destructive', title: 'Save Failed', description: 'Database accepted request but no data was updated. Filter mismatch.' });
+         console.error('[SAVE] Filter mismatch! Filter:', filter, 'Result:', res);
+         setIsAutoSaving(false);
+         return;
+      }
+
+      setActivePage({ ...activePage, sections: editorPage.sections });
+      // Write publish cache for the live site
+      writePublishCache(editorPage.sections);
+
       toast({ title: 'Saved Successfully' });
-      // Don't force reload - let the query refetch
     } catch (err) {
       toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
@@ -291,11 +345,10 @@ try {
       const currentStatus = normalizeScalar(site.isPublished) === true;
       const newStatus = !currentStatus;
 
-      console.log('[PUBLISH] Toggling status to:', newStatus);
 
       const res: any = await updateSite({
-        filter: JSON.stringify({ ItemId: [siteId] }), // VibeSites filter uses array for ItemId
-        input: { isPublished: [newStatus] } // VibeSites input uses array for booleans
+        filter: JSON.stringify({ ItemId: { $eq: siteId } }),
+        input: { isPublished: newStatus } 
       });
 
       if (!res?.updateVibeSite?.acknowledged || res?.updateVibeSite?.totalImpactedData === 0) {
@@ -318,6 +371,9 @@ try {
         ) : undefined
       });
 
+      // Write publish cache so live site can render immediately
+      writePublishCache();
+
       // Refetch site data
       refetchSite();
     } catch (err) {
@@ -328,9 +384,9 @@ try {
 
   const handleSaveSettings = async (data: { name: string; slug: string; description: string }) => {
     try {
-      console.log('[SETTINGS] Saving site settings:', data);
+
       const res: any = await updateSite({
-        filter: JSON.stringify({ ItemId: [siteId] }),
+        filter: JSON.stringify({ ItemId: { $eq: siteId } }),
         input: {
           siteName: [data.name],
           siteSlug: [data.slug],
@@ -340,7 +396,7 @@ try {
 
       if (res?.updateVibeSite?.acknowledged) {
         toast({ title: 'Success', description: 'Site settings updated successfully.' });
-        setIsSettingsOpen(false);
+        setIsSiteSettingsOpen(false);
         refetchSite();
       }
     } catch (err) {
@@ -364,7 +420,7 @@ try {
         return;
     }
     await updateSite({
-      filter: JSON.stringify({ ItemId: siteId }),
+      filter: JSON.stringify({ ItemId: { $eq: siteId } }),
       input: {
         siteName: [siteTitle],
         metadata: JSON.stringify({ description: siteDescription })
@@ -390,17 +446,17 @@ try {
       navigate(`/site-builder/${siteId}/${slug}`);
       return;
     }
-    console.log('Creating page:', { name, slug, siteId });
+
     try {
       const res = await createPage({
         input: {
           siteId: [siteId],
           name: [name],
           slug: [slug],
-          sections: JSON.stringify([]),
+          sections: [JSON.stringify([])],
         }
       });
-      console.log('Page creation result:', res);
+
       navigate(`/site-builder/${siteId}/${slug}`);
     } catch (err) {
       console.error('Page creation error:', err);
@@ -417,7 +473,7 @@ try {
        return;
     }
     await deletePage({
-      filter: JSON.stringify({ slug: [slug], siteId: [siteId] }),
+      filter: JSON.stringify({ slug: { $eq: slug }, siteId: { $eq: siteId } }),
       input: { isHardDelete: false }
     });
     if (pageId === slug) {
@@ -438,7 +494,7 @@ try {
        return;
     }
     await updatePage({
-      filter: JSON.stringify({ slug: [oldSlug], siteId: [siteId] }),
+      filter: JSON.stringify({ slug: { $eq: oldSlug }, siteId: { $eq: siteId } }),
       input: { name: [name], slug: [slug] }
     });
     if (oldSlug !== slug) {
@@ -557,7 +613,7 @@ try {
 
         {/* Center: Improved Page Tabs with Saving Indicator */}
         <div className="flex-1 flex items-center justify-center max-w-[600px] mx-4 relative">
-          <div className="bg-[#0D1117] p-1 rounded-lg border border-[#30363D]">
+          <div className="bg-[#0D1117] p-1 rounded-lg border border-[#30363D] flex items-center gap-2">
             <PageTabs
               pages={pages}
               activePageId={editorPage.slug}
@@ -566,14 +622,13 @@ try {
               onPageDelete={handlePageDelete}
               onPageUpdate={handlePageUpdate}
             />
+            {isAutoSaving && (
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#2F81F7] uppercase tracking-widest animate-pulse px-3 flex-shrink-0">
+                <RefreshCcw className="w-3 h-3 animate-spin" />
+                Saving
+              </div>
+            )}
           </div>
-          
-          {isAutoSaving && (
-            <div className="absolute -right-24 flex items-center gap-2 text-[10px] font-bold text-[#2F81F7] uppercase tracking-widest animate-pulse">
-              <RefreshCcw className="w-3 h-3 animate-spin" />
-              Saving...
-            </div>
-          )}
         </div>
 
         {/* Right: Actions */}
@@ -654,7 +709,7 @@ try {
           }} />
 
           {/* Canvas Studio Area */}
-          <div className="flex-1 overflow-y-auto studio-bg p-12 scroll-smooth border-x border-[#30363D]">
+          <div className="flex-1 overflow-y-auto studio-bg p-6 md:p-10 scroll-smooth border-x border-[#30363D]">
             <div
               className="mx-auto transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
               style={{ width: VIEWPORT_WIDTHS[viewport] }}

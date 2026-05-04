@@ -25,6 +25,10 @@ export default {
         sans: ['Nunito Sans', 'sans-serif'],
       },
       colors: {
+        brand: '#2F81F7',
+        surface: '#161B22',
+        'surface-border': '#30363D',
+        'on-surface': '#E6EDF3',
         white: 'hsl(var(--white))',
         background: 'hsl(var(--background))',
         surface: 'hsl(var(--surface))',

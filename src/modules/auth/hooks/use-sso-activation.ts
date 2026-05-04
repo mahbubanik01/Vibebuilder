@@ -37,12 +37,12 @@ export function useSsoActivation(provider?: string) {
 
   useEffect(() => {
     if (!code || !state) {
-      navigate('/login', { replace: true });
+      navigate('/auth/signin', { replace: true });
       return;
     }
 
     if (effectRan.current) {
-      navigate('/login', { replace: true });
+      navigate('/auth/signin', { replace: true });
       return;
     }
 
@@ -75,7 +75,7 @@ export function useSsoActivation(provider?: string) {
         if ('enable_mfa' in res && res.enable_mfa) {
           return navigate(`/verify-mfa?mfa_id=${(res as any).mfaId}&mfa_type=${(res as any).mfaType}`);
         }
-        navigate('/login', { replace: true });
+        navigate('/auth/signin', { replace: true });
       } catch (error: any) {
         console.error('SSO Callback error:', error);
         setUnAuthenticated();
